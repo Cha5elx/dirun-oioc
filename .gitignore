@@ -1,0 +1,7 @@
+node_modules/
+.env
+output.log
+*.log
+.DS_Store
+.vscode/
+.idea/

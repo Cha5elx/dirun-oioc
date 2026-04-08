@@ -1,0 +1,60 @@
+ROSTemplateFormatVersion: '2015-09-01'
+Transform: 'Aliyun::Serverless-2018-04-03'
+Resources:
+  dirunOiocService:
+    Type: 'Aliyun::Serverless::Service'
+    Properties:
+      Description: 有赞与第三方一物一码系统对接服务
+      LogConfig:
+        Project: dirun-oioc-logs
+        Logstore: function-logs
+    dirunOiocFunction:
+      Type: 'Aliyun::Serverless::Function'
+      Properties:
+        Handler: src/cloud-function.handler
+        Runtime: nodejs16
+        CodeUri: ./
+        MemorySize: 256
+        Timeout: 30
+        EnvironmentVariables:
+          YOUZAN_CLIENT_ID: your_client_id
+          YOUZAN_CLIENT_SECRET: your_client_secret
+          YOUZAN_GRANT_ID: your_grant_id
+          YOUZAN_DRY_RUN: 'false'
+          OIOC_BASE_URL: https://api.oioc-provider.com
+          OIOC_USERNAME: your_username
+          OIOC_PASSWORD: your_password
+          NODE_ENV: production
+
+  dirunOiocApi:
+    Type: 'Aliyun::Serverless::Api'
+    Properties:
+      StageName: RELEASE
+      DefinitionBody:
+        swagger: '2.0'
+        basePath: /
+        info:
+          title: dirun-oioc-api
+          version: '1.0.0'
+        paths:
+          /webhook/youzan:
+            post:
+              x-aliyun-apigateway-integration:
+                type: fc
+                httpMethod: POST
+                serviceName: dirunOiocService
+                functionName: dirunOiocFunction
+          /webhook/oioc:
+            post:
+              x-aliyun-apigateway-integration:
+                type: fc
+                httpMethod: POST
+                serviceName: dirunOiocService
+                functionName: dirunOiocFunction
+          /health:
+            get:
+              x-aliyun-apigateway-integration:
+                type: fc
+                httpMethod: POST
+                serviceName: dirunOiocService
+                functionName: dirunOiocFunction

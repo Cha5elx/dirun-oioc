@@ -1,0 +1,39 @@
+service: dirun-oioc
+
+provider:
+  name: tencent
+  runtime: Nodejs16.13
+  region: ap-guangzhou
+  credentials: ~/.tencent-credentials
+
+functions:
+  main:
+    handler: src/cloud-function.handler
+    memorySize: 256
+    timeout: 30
+    environment:
+      YOUZAN_CLIENT_ID: your_client_id
+      YOUZAN_CLIENT_SECRET: your_client_secret
+      YOUZAN_GRANT_ID: your_grant_id
+      YOUZAN_DRY_RUN: 'false'
+      OIOC_BASE_URL: https://api.oioc-provider.com
+      OIOC_USERNAME: your_username
+      OIOC_PASSWORD: your_password
+      NODE_ENV: production
+    events:
+      - apigw:
+          name: dirun_oioc_api
+          parameters:
+            protocols:
+              - https
+            environment: release
+            endpoints:
+              - path: /webhook/youzan
+                method: POST
+              - path: /webhook/oioc
+                method: POST
+              - path: /health
+                method: GET
+
+plugins:
+  - serverless-tencent
