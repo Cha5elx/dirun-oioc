@@ -1,21 +1,11 @@
 const oiocClient = require('../clients/oioc');
 const youzanClient = require('../clients/youzan');
-const fs = require('fs');
-const path = require('path');
+const { SyncLog } = require('../models');
 
 class SyncService {
   constructor() {
     this.oiocClient = oiocClient;
     this.youzanClient = youzanClient;
-    this.logFile = path.join(__dirname, '../../logs/sync.log');
-    this.ensureLogDirectory();
-  }
-
-  ensureLogDirectory() {
-    const logDir = path.dirname(this.logFile);
-    if (!fs.existsSync(logDir)) {
-      fs.mkdirSync(logDir, { recursive: true });
-    }
   }
 
   getBeijingTime() {
@@ -26,21 +16,19 @@ class SyncService {
 
   async logSync(type, data, status, error = null) {
     const timestamp = this.getBeijingTime();
-    const logEntry = {
-      timestamp,
-      type,
-      status,
-      data,
-      error: error ? error.message : null,
-    };
     
-    console.log(`[${logEntry.timestamp}] ${type} - ${status}`, data, error || '');
+    console.log(`[${timestamp}] ${type} - ${status}`, data, error || '');
     
     try {
-      const logLine = JSON.stringify(logEntry) + '\n';
-      fs.appendFileSync(this.logFile, logLine);
+      await SyncLog.create({
+        type,
+        status,
+        data,
+        error: error ? error.message : null,
+        timestamp: new Date()
+      });
     } catch (err) {
-      console.error('写入日志文件失败:', err);
+      console.error('写入日志数据库失败:', err);
     }
   }
 

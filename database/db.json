@@ -1,0 +1,21 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "username": "admin",
+      "password": "$2a$10$IQkHP4WdANThwaDE7trzDOYVFMY3oxYc9TUus/RhS5QlDyYdOXFPW",
+      "role": "admin",
+      "createdAt": "2026-04-08T09:27:05.024Z",
+      "lastLoginAt": "2026-04-08T09:27:09.154Z"
+    },
+    {
+      "id": 2,
+      "username": "cangku001",
+      "password": "$2a$10$vmYYhhulLNwX4fzaILbrzeK.y1zcYvfWlO2KZ7qqgxNGp1i3ssKzW",
+      "role": "user",
+      "createdAt": "2026-04-08T09:36:30.985Z",
+      "lastLoginAt": "2026-04-08T09:37:47.981Z"
+    }
+  ],
+  "syncLogs": []
+}

@@ -74,7 +74,7 @@ class OiocClient {
   }
 
   /**
-   * 登录第三方一物一码系统
+   * 登录第三方一物一码系统（使用配置文件中的账号）
    * Header参数：syskey = DIRUN（必需）
    * Body参数：
    * @param {string} account - 账号（必需）
@@ -90,11 +90,36 @@ class OiocClient {
         type: 'PDA',
       });
       
-      // 验证是否返回token
-      // token在 response.data.data.token 中
       if (response.data && response.data.data && response.data.data.token) {
         this.token = response.data.data.token;
         console.log('✅ 第三方系统登录成功，Token已保存');
+        return response.data.data;
+      } else {
+        throw new Error('登录失败：未返回token');
+      }
+    } catch (error) {
+      console.error('登录失败:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * 使用自定义账号密码登录（用于管理后台登录验证）
+   * @param {string} account - 账号
+   * @param {string} password - 密码
+   * @returns {Promise<object>} 登录结果，包含token
+   */
+  async loginWithCredentials(account, password) {
+    try {
+      const response = await this.axiosInstance.post('/login/access-token', {
+        account: account,
+        password: password,
+        type: 'PDA',
+      });
+      
+      if (response.data && response.data.data && response.data.data.token) {
+        this.token = response.data.data.token;
+        console.log(`✅ 用户 ${account} 登录成功`);
         return response.data.data;
       } else {
         throw new Error('登录失败：未返回token');
