@@ -9,11 +9,6 @@ import App from './App.vue'
 import router from './router'
 import './styles/index.css'
 
-const originalReplaceState = window.history.replaceState
-window.history.replaceState = function (state, title, url) {
-  originalReplaceState.call(this, null, '', url || '')
-}
-
 const app = createApp(App)
 
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
