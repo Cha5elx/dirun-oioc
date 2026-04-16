@@ -42,7 +42,6 @@
       </el-form>
       
       <div class="login-footer">
-        <p>默认账号: admin / admin123</p>
       </div>
     </div>
   </div>
