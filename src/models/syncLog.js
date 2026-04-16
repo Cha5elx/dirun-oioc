@@ -4,13 +4,17 @@ async function create(logData) {
   const db = readDb();
   const maxId = db.syncLogs.reduce((max, l) => Math.max(max, l.id || 0), 0);
   
+  const now = new Date();
+  const beijingTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+  const defaultTimestamp = beijingTime.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '');
+  
   const log = {
     id: maxId + 1,
     type: logData.type,
     status: logData.status,
     data: logData.data || null,
     error: logData.error || null,
-    timestamp: logData.timestamp || new Date().toISOString()
+    timestamp: logData.timestamp || defaultTimestamp
   };
   
   db.syncLogs.push(log);

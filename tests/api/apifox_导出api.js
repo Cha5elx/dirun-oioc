@@ -21,8 +21,8 @@
 // post 登录
 var axios = require('axios');
 var data = JSON.stringify({
-   "account": "cangku001",
-   "password": "123456",
+   "account": "YOUR_USERNAME",
+   "password": "YOUR_PASSWORD",
    "type": "PDA"
 });
 

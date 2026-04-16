@@ -25,7 +25,7 @@ class SyncService {
         status,
         data,
         error: error ? error.message : null,
-        timestamp: new Date()
+        timestamp: timestamp
       });
     } catch (err) {
       console.error('写入日志数据库失败:', err);

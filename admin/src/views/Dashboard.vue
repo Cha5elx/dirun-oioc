@@ -116,6 +116,8 @@ const lineChartRef = ref()
 const pieChartRef = ref()
 let lineChart = null
 let pieChart = null
+let refreshTimer = null
+const REFRESH_INTERVAL = 30000
 
 const stats = ref({
   todayOrders: 0,
@@ -215,14 +217,39 @@ function handleResize() {
   pieChart?.resize()
 }
 
+function startAutoRefresh() {
+  refreshTimer = setInterval(async () => {
+    if (document.visibilityState === 'visible') {
+      await Promise.all([fetchStats(), fetchRecentLogs()])
+    }
+  }, REFRESH_INTERVAL)
+}
+
+function stopAutoRefresh() {
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+    refreshTimer = null
+  }
+}
+
+function handleVisibilityChange() {
+  if (document.visibilityState === 'visible') {
+    Promise.all([fetchStats(), fetchRecentLogs()])
+  }
+}
+
 onMounted(async () => {
   await Promise.all([fetchStats(), fetchRecentLogs()])
   initCharts()
   window.addEventListener('resize', handleResize)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+  startAutoRefresh()
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+  stopAutoRefresh()
   lineChart?.dispose()
   pieChart?.dispose()
 })

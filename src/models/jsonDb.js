@@ -6,12 +6,12 @@ const dbPath = path.join(__dirname, '../../database/db.json');
 
 async function ensureDb() {
   if (!fs.existsSync(dbPath)) {
-    const hashedPassword = await bcrypt.hash('admin123', 10);
+    const hashedPassword = await bcrypt.hash('123456', 10);
     const initialData = {
       users: [
         {
           id: 1,
-          username: 'admin',
+          username: 'cangku001',
           password: hashedPassword,
           role: 'admin',
           createdAt: new Date().toISOString(),

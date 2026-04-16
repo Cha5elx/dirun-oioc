@@ -102,13 +102,15 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import api from '@/api'
 
 const loading = ref(false)
 const logs = ref([])
 const detailVisible = ref(false)
 const currentLog = ref({})
+let refreshTimer = null
+const REFRESH_INTERVAL = 30000
 
 const filters = reactive({
   type: '',
@@ -180,8 +182,36 @@ function showDetail(log) {
   detailVisible.value = true
 }
 
+function startAutoRefresh() {
+  refreshTimer = setInterval(() => {
+    if (document.visibilityState === 'visible') {
+      fetchLogs()
+    }
+  }, REFRESH_INTERVAL)
+}
+
+function stopAutoRefresh() {
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+    refreshTimer = null
+  }
+}
+
+function handleVisibilityChange() {
+  if (document.visibilityState === 'visible') {
+    fetchLogs()
+  }
+}
+
 onMounted(() => {
   fetchLogs()
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+  startAutoRefresh()
+})
+
+onUnmounted(() => {
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+  stopAutoRefresh()
 })
 </script>
 

@@ -14,8 +14,1286 @@
       "password": "$2a$10$vmYYhhulLNwX4fzaILbrzeK.y1zcYvfWlO2KZ7qqgxNGp1i3ssKzW",
       "role": "user",
       "createdAt": "2026-04-08T09:36:30.985Z",
-      "lastLoginAt": "2026-04-08T09:37:47.981Z"
+      "lastLoginAt": "2026-04-16T07:18:06.483Z"
     }
   ],
-  "syncLogs": []
+  "syncLogs": [
+    {
+      "id": 1,
+      "type": "inbound",
+      "status": "success",
+      "data": {
+        "productId": "12479C06-1F34-42F8-A4EC-C0B7EF2561FD",
+        "itemId": "702735944",
+        "skuId": "",
+        "quantity": 5,
+        "codes": [
+          {
+            "code": "DR17763240340200001",
+            "productID": "12479C06-1F34-42F8-A4EC-C0B7EF2561FD",
+            "productName": "橙花精油50ml",
+            "status": "created"
+          },
+          {
+            "code": "DR17763240340200002",
+            "productID": "12479C06-1F34-42F8-A4EC-C0B7EF2561FD",
+            "productName": "橙花精油50ml",
+            "status": "created"
+          },
+          {
+            "code": "DR17763240340200003",
+            "productID": "12479C06-1F34-42F8-A4EC-C0B7EF2561FD",
+            "productName": "橙花精油50ml",
+            "status": "created"
+          },
+          {
+            "code": "DR17763240340200004",
+            "productID": "12479C06-1F34-42F8-A4EC-C0B7EF2561FD",
+            "productName": "橙花精油50ml",
+            "status": "created"
+          },
+          {
+            "code": "DR17763240340200005",
+            "productID": "12479C06-1F34-42F8-A4EC-C0B7EF2561FD",
+            "productName": "橙花精油50ml",
+            "status": "created"
+          }
+        ],
+        "receiverID": "FE7D844D-5CAB-4DB9-97FB-2C812C6F142D"
+      },
+      "error": null,
+      "timestamp": "2026-04-16T07:20:35.408Z"
+    },
+    {
+      "id": 2,
+      "type": "outbound",
+      "status": "success",
+      "data": {
+        "orderId": "ORDER_1776324035631",
+        "logisticsNo": "SF1776324035631",
+        "codes": [
+          {
+            "code": "DR17763240340200001",
+            "productID": "12479C06-1F34-42F8-A4EC-C0B7EF2561FD",
+            "productName": "橙花精油50ml",
+            "status": "created"
+          },
+          {
+            "code": "DR17763240340200002",
+            "productID": "12479C06-1F34-42F8-A4EC-C0B7EF2561FD",
+            "productName": "橙花精油50ml",
+            "status": "created"
+          }
+        ],
+        "itemId": "702735944",
+        "skuId": ""
+      },
+      "error": null,
+      "timestamp": "2026-04-16T07:20:35.985Z"
+    },
+    {
+      "id": 3,
+      "type": "return_complete",
+      "status": "success",
+      "data": {
+        "orderId": "RETURN_1776324036202",
+        "codes": [
+          {
+            "code": "DR17763240340200001",
+            "productID": "12479C06-1F34-42F8-A4EC-C0B7EF2561FD",
+            "productName": "橙花精油50ml",
+            "status": "created"
+          }
+        ],
+        "itemId": "702735944",
+        "skuId": ""
+      },
+      "error": null,
+      "timestamp": "2026-04-16T07:20:36.473Z"
+    },
+    {
+      "id": 4,
+      "type": "inbound",
+      "status": "success",
+      "data": {
+        "productId": "PROD001",
+        "itemId": "ITEM001",
+        "skuId": "SKU001",
+        "quantity": 100,
+        "codes": [
+          {
+            "code": "IN17763260304085130",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304082386",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304083825",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304083912",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304089805",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304080880",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304081811",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304080960",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304082903",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304085624",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304081823",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304080656",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304088342",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304083674",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304086600",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304087749",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304083427",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304089715",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304081337",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304088527",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304087573",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304089994",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304088975",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304089404",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304087875",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304085501",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304081745",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304087049",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304087628",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304082276",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304081113",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304088262",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304083425",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304083072",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304084915",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304087087",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304081861",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304086699",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304085076",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304081685",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304085596",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304084272",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304088577",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304088122",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304080488",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304084888",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304080706",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304087934",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304086265",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304082613",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304080882",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304089376",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304083445",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304080887",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304081199",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304086860",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304084190",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304088504",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304082033",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304087503",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304083230",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304081079",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304087777",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304089347",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304088084",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304085658",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304088592",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304083395",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304082678",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304087349",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304088395",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304084500",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304086570",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304081652",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304087692",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304083665",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304084827",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304087205",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304086422",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304087646",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304081397",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304085346",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304081612",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304089778",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304083096",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304080251",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304080789",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304083045",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304087700",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304087256",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304086802",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304087872",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304088237",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304081733",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304081054",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304089790",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304083032",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304083096",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304086633",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304085838",
+            "status": "active",
+            "productId": "PROD001"
+          }
+        ],
+        "receiverID": "WAREHOUSE001"
+      },
+      "error": null,
+      "timestamp": "2026-04-16 15:53:51"
+    },
+    {
+      "id": 5,
+      "type": "order_created",
+      "status": "failed",
+      "data": {
+        "orderId": "YZ1776326034642",
+        "items": [
+          {
+            "productID": "PROD001",
+            "expectedQty": 2
+          }
+        ]
+      },
+      "error": "订单详情格式错误",
+      "timestamp": "2026-04-16 15:53:54"
+    },
+    {
+      "id": 6,
+      "type": "outbound",
+      "status": "success",
+      "data": {
+        "orderId": "YZ1776326034642",
+        "logisticsNo": "SF1776326037712",
+        "codes": [
+          {
+            "code": "IN17763260304085130",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763260304082386",
+            "status": "active",
+            "productId": "PROD001"
+          }
+        ],
+        "itemId": "ITEM001",
+        "skuId": "SKU001"
+      },
+      "error": null,
+      "timestamp": "2026-04-16 15:53:57"
+    },
+    {
+      "id": 7,
+      "type": "refund_created",
+      "status": "success",
+      "data": {
+        "orderId": "YZ1776326034642",
+        "refundId": "RF1776326040829",
+        "items": [
+          {
+            "productID": "PROD001",
+            "expectedQty": 1
+          }
+        ]
+      },
+      "error": null,
+      "timestamp": "2026-04-16 15:54:01"
+    },
+    {
+      "id": 8,
+      "type": "return_complete",
+      "status": "success",
+      "data": {
+        "orderId": "YZ1776326034642",
+        "codes": [
+          {
+            "code": "RET17763260448399610",
+            "status": "returned"
+          }
+        ],
+        "itemId": "ITEM001",
+        "skuId": "SKU001"
+      },
+      "error": null,
+      "timestamp": "2026-04-16 15:54:04"
+    },
+    {
+      "id": 9,
+      "type": "inbound",
+      "status": "success",
+      "data": {
+        "productId": "PROD001",
+        "itemId": "ITEM001",
+        "skuId": "SKU001",
+        "quantity": 100,
+        "codes": [
+          {
+            "code": "IN17763275857462436",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857469213",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857464682",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857462755",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857464640",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857468314",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857464376",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857461552",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857469498",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857465854",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857464047",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857469700",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857463376",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857465895",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857468883",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857469323",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857464168",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857468500",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857462751",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857462547",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857469569",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857467979",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857466090",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857462528",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857467550",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857465473",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857467365",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857462312",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857460268",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857462552",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857467284",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857467239",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857461342",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857465794",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857461539",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857464064",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857468261",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857464949",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857469287",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857468364",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857469790",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857468986",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857466314",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857460222",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857461654",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857466600",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857461100",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857462037",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857462356",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857466774",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857466173",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857469572",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857461389",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857460399",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857464372",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857464869",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857462735",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857460722",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857466445",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857461716",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857465100",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857463025",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857461257",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857463750",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857462749",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857465709",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857469418",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857467530",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857462067",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857466418",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857467063",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857463394",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857469078",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857463580",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857466546",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857466885",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857466066",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857464576",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857466489",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857468572",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857467849",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857467454",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857462318",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857461268",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857463923",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857465739",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857460175",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857467338",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857461404",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857467438",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857462193",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857465655",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857460348",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857464200",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857462737",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857467211",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857461896",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857466269",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857464184",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857467813",
+            "status": "active",
+            "productId": "PROD001"
+          }
+        ],
+        "receiverID": "WAREHOUSE001"
+      },
+      "error": null,
+      "timestamp": "2026-04-16 16:19:47"
+    },
+    {
+      "id": 10,
+      "type": "order_created",
+      "status": "failed",
+      "data": {
+        "orderId": "YZ1776327590336",
+        "items": [
+          {
+            "productID": "PROD001",
+            "expectedQty": 2
+          }
+        ]
+      },
+      "error": "订单详情格式错误",
+      "timestamp": "2026-04-16 16:19:50"
+    },
+    {
+      "id": 11,
+      "type": "outbound",
+      "status": "success",
+      "data": {
+        "orderId": "YZ1776327590336",
+        "logisticsNo": "SF1776327593381",
+        "codes": [
+          {
+            "code": "IN17763275857462436",
+            "status": "active",
+            "productId": "PROD001"
+          },
+          {
+            "code": "IN17763275857469213",
+            "status": "active",
+            "productId": "PROD001"
+          }
+        ],
+        "itemId": "ITEM001",
+        "skuId": "SKU001"
+      },
+      "error": null,
+      "timestamp": "2026-04-16 16:19:53"
+    },
+    {
+      "id": 12,
+      "type": "refund_created",
+      "status": "success",
+      "data": {
+        "orderId": "YZ1776327590336",
+        "refundId": "RF1776327596497",
+        "items": [
+          {
+            "productID": "PROD001",
+            "expectedQty": 1
+          }
+        ]
+      },
+      "error": null,
+      "timestamp": "2026-04-16 16:19:57"
+    },
+    {
+      "id": 13,
+      "type": "return_complete",
+      "status": "success",
+      "data": {
+        "orderId": "YZ1776327590336",
+        "codes": [
+          {
+            "code": "RET17763276003548891",
+            "status": "returned"
+          }
+        ],
+        "itemId": "ITEM001",
+        "skuId": "SKU001"
+      },
+      "error": null,
+      "timestamp": "2026-04-16 16:20:00"
+    }
+  ]
 }

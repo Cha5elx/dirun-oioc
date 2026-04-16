@@ -1,8 +1,50 @@
+# Dependencies
 node_modules/
+package-lock.json
+
+# Environment files
 .env
-output.log
+.env.local
+.env.development
+.env.production
+.env.*.local
+
+# Logs
+logs/
 *.log
-.DS_Store
+output.log
+npm-debug.log*
+
+# IDE
 .vscode/
 .idea/
-open-sdk-node/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Build outputs
+admin/dist/
+dist/
+build/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*~
+
+# Database (optional - uncomment if needed)
+# database/*.db
+# database/*.json
+
+# Test coverage
+coverage/
+
+# Cache
+.cache/
+.parcel-cache/
