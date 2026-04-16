@@ -9,9 +9,11 @@ class OiocClient {
   constructor() {
     this.baseUrl = config.oioc.baseUrl;
     this.token = null;
+    this.tokenExpiry = null;
+    this.userTokens = new Map();
     this.syskey = 'DIRUN';
+    this.isProduction = config.server.env === 'production';
     
-    // 创建axios实例
     this.axiosInstance = axios.create({
       baseURL: this.baseUrl,
       timeout: 30000,
@@ -20,28 +22,27 @@ class OiocClient {
       },
     });
 
-    // 添加请求拦截器，自动添加syskey和token
     this.axiosInstance.interceptors.request.use(
       (axiosConfig) => {
-        // 所有请求都需要添加syskey
         axiosConfig.headers['syskey'] = this.syskey;
         
-        // 如果已登录，添加token头
         if (this.token) {
           axiosConfig.headers['token'] = this.token;
         }
         
-        // 打印完整请求信息
-        console.log('\n📤 API请求:');
-        console.log(`   方法: ${axiosConfig.method?.toUpperCase()}`);
-        console.log(`   URL: ${axiosConfig.baseURL}${axiosConfig.url}`);
-        if (axiosConfig.params) {
-          console.log(`   Query参数: ${JSON.stringify(axiosConfig.params, null, 2)}`);
+        axiosConfig.metadata = { startTime: Date.now() };
+        
+        if (!this.isProduction) {
+          console.log('\n📤 API请求:');
+          console.log(`   方法: ${axiosConfig.method?.toUpperCase()}`);
+          console.log(`   URL: ${axiosConfig.baseURL}${axiosConfig.url}`);
+          if (axiosConfig.params) {
+            console.log(`   Query参数: ${JSON.stringify(axiosConfig.params, null, 2)}`);
+          }
+          if (axiosConfig.data) {
+            console.log(`   Body数据: ${JSON.stringify(axiosConfig.data, null, 2)}`);
+          }
         }
-        if (axiosConfig.data) {
-          console.log(`   Body数据: ${JSON.stringify(axiosConfig.data, null, 2)}`);
-        }
-        console.log(`   Headers: ${JSON.stringify(axiosConfig.headers, null, 2)}`);
         
         return axiosConfig;
       },
@@ -50,23 +51,33 @@ class OiocClient {
       }
     );
     
-    // 添加响应拦截器，打印完整响应信息
     this.axiosInstance.interceptors.response.use(
       (response) => {
-        console.log('\n📥 API响应:');
-        console.log(`   状态码: ${response.status}`);
-        console.log(`   URL: ${response.config.url}`);
-        console.log(`   响应数据: ${JSON.stringify(response.data, null, 2)}`);
+        const duration = Date.now() - response.config.metadata.startTime;
+        
+        if (!this.isProduction) {
+          console.log('\n📥 API响应:');
+          console.log(`   状态码: ${response.status}`);
+          console.log(`   URL: ${response.config.url}`);
+          console.log(`   ⏱️  耗时: ${duration}ms`);
+        } else if (duration > 1000) {
+          console.log(`⚠️  慢请求警告: ${response.config.url} 耗时 ${duration}ms`);
+        }
+        
         return response;
       },
       (error) => {
-        console.log('\n📥 API响应错误:');
-        console.log(`   URL: ${error.config?.url}`);
-        if (error.response) {
-          console.log(`   状态码: ${error.response.status}`);
-          console.log(`   响应数据: ${JSON.stringify(error.response.data, null, 2)}`);
-        } else {
-          console.log(`   错误信息: ${error.message}`);
+        const duration = Date.now() - error.config?.metadata?.startTime;
+        
+        if (!this.isProduction) {
+          console.log('\n📥 API响应错误:');
+          console.log(`   URL: ${error.config?.url}`);
+          if (error.response) {
+            console.log(`   状态码: ${error.response.status}`);
+          } else {
+            console.log(`   错误信息: ${error.message}`);
+          }
+          console.log(`   ⏱️  耗时: ${duration}ms`);
         }
         return Promise.reject(error);
       }
@@ -92,6 +103,7 @@ class OiocClient {
       
       if (response.data && response.data.data && response.data.data.token) {
         this.token = response.data.data.token;
+        this.tokenExpiry = Date.now() + (23 * 60 * 60 * 1000);
         console.log('✅ 第三方系统登录成功，Token已保存');
         return response.data.data;
       } else {
@@ -111,6 +123,13 @@ class OiocClient {
    */
   async loginWithCredentials(account, password) {
     try {
+      const cachedToken = this.userTokens.get(account);
+      if (cachedToken && cachedToken.expiry > Date.now()) {
+        this.token = cachedToken.token;
+        console.log(`✅ 使用缓存的Token: ${account}`);
+        return { token: cachedToken.token };
+      }
+      
       const response = await this.axiosInstance.post('/login/access-token', {
         account: account,
         password: password,
@@ -119,6 +138,10 @@ class OiocClient {
       
       if (response.data && response.data.data && response.data.data.token) {
         this.token = response.data.data.token;
+        this.userTokens.set(account, {
+          token: response.data.data.token,
+          expiry: Date.now() + (23 * 60 * 60 * 1000)
+        });
         console.log(`✅ 用户 ${account} 登录成功`);
         return response.data.data;
       } else {
@@ -134,8 +157,8 @@ class OiocClient {
    * 确保已登录（如果没有token则自动登录）
    */
   async ensureLogin() {
-    if (!this.token) {
-      console.log('⚠️  Token不存在，自动登录...');
+    if (!this.token || (this.tokenExpiry && Date.now() >= this.tokenExpiry)) {
+      console.log('⚠️  Token不存在或已过期，自动登录...');
       await this.login();
     }
   }

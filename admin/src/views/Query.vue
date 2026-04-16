@@ -1,6 +1,6 @@
 <template>
   <div class="query-page">
-    <el-card shadow="hover">
+    <el-card shadow="always">
       <template #header>
         <span>防伪码查询</span>
       </template>
@@ -24,7 +24,7 @@
       </div>
     </el-card>
     
-    <el-card v-if="result" shadow="hover" class="result-card">
+    <el-card v-if="result" shadow="always" class="result-card">
       <template #header>
         <div class="result-header">
           <span>查询结果</span>
@@ -68,7 +68,7 @@
       <el-empty v-else description="未找到该防伪码相关信息" />
     </el-card>
     
-    <el-card v-else shadow="hover" class="tip-card">
+    <el-card v-else shadow="always" class="tip-card">
       <el-empty description="请输入防伪码进行查询">
         <template #image>
           <el-icon size="60" color="#c0c4cc"><Search /></el-icon>

@@ -1,6 +1,6 @@
 <template>
   <div class="logs-page">
-    <el-card shadow="hover">
+    <el-card shadow="always">
       <template #header>
         <div class="card-header">
           <span>同步日志</span>
@@ -184,9 +184,7 @@ function showDetail(log) {
 
 function startAutoRefresh() {
   refreshTimer = setInterval(() => {
-    if (document.visibilityState === 'visible') {
-      fetchLogs()
-    }
+    fetchLogs()
   }, REFRESH_INTERVAL)
 }
 
@@ -197,20 +195,12 @@ function stopAutoRefresh() {
   }
 }
 
-function handleVisibilityChange() {
-  if (document.visibilityState === 'visible') {
-    fetchLogs()
-  }
-}
-
 onMounted(() => {
   fetchLogs()
-  document.addEventListener('visibilitychange', handleVisibilityChange)
   startAutoRefresh()
 })
 
 onUnmounted(() => {
-  document.removeEventListener('visibilitychange', handleVisibilityChange)
   stopAutoRefresh()
 })
 </script>

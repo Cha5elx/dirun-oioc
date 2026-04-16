@@ -2,7 +2,7 @@
   <div class="dashboard">
     <el-row :gutter="20" class="stat-cards">
       <el-col :span="6">
-        <el-card shadow="hover" class="stat-card">
+        <el-card shadow="always" class="stat-card">
           <div class="stat-icon" style="background: #409eff;">
             <el-icon size="28"><ShoppingCart /></el-icon>
           </div>
@@ -14,7 +14,7 @@
       </el-col>
       
       <el-col :span="6">
-        <el-card shadow="hover" class="stat-card">
+        <el-card shadow="always" class="stat-card">
           <div class="stat-icon" style="background: #67c23a;">
             <el-icon size="28"><Box /></el-icon>
           </div>
@@ -26,7 +26,7 @@
       </el-col>
       
       <el-col :span="6">
-        <el-card shadow="hover" class="stat-card">
+        <el-card shadow="always" class="stat-card">
           <div class="stat-icon" style="background: #e6a23c;">
             <el-icon size="28"><Van /></el-icon>
           </div>
@@ -38,7 +38,7 @@
       </el-col>
       
       <el-col :span="6">
-        <el-card shadow="hover" class="stat-card">
+        <el-card shadow="always" class="stat-card">
           <div class="stat-icon" style="background: #f56c6c;">
             <el-icon size="28"><RefreshLeft /></el-icon>
           </div>
@@ -52,7 +52,7 @@
     
     <el-row :gutter="20" class="chart-row">
       <el-col :span="16">
-        <el-card shadow="hover">
+        <el-card shadow="always">
           <template #header>
             <div class="card-header">
               <span>近7天同步趋势</span>
@@ -63,7 +63,7 @@
       </el-col>
       
       <el-col :span="8">
-        <el-card shadow="hover">
+        <el-card shadow="always">
           <template #header>
             <div class="card-header">
               <span>同步成功率</span>
@@ -76,7 +76,7 @@
     
     <el-row :gutter="20">
       <el-col :span="24">
-        <el-card shadow="hover">
+        <el-card shadow="always">
           <template #header>
             <div class="card-header">
               <span>最近同步记录</span>
@@ -173,8 +173,12 @@ async function fetchRecentLogs() {
 }
 
 function initCharts() {
-  lineChart = echarts.init(lineChartRef.value)
-  pieChart = echarts.init(pieChartRef.value)
+  lineChart = echarts.init(lineChartRef.value, null, { 
+    renderer: 'svg'
+  })
+  pieChart = echarts.init(pieChartRef.value, null, { 
+    renderer: 'svg'
+  })
   
   const lineOption = {
     tooltip: { trigger: 'axis' },
@@ -219,9 +223,7 @@ function handleResize() {
 
 function startAutoRefresh() {
   refreshTimer = setInterval(async () => {
-    if (document.visibilityState === 'visible') {
-      await Promise.all([fetchStats(), fetchRecentLogs()])
-    }
+    await Promise.all([fetchStats(), fetchRecentLogs()])
   }, REFRESH_INTERVAL)
 }
 
@@ -232,23 +234,15 @@ function stopAutoRefresh() {
   }
 }
 
-function handleVisibilityChange() {
-  if (document.visibilityState === 'visible') {
-    Promise.all([fetchStats(), fetchRecentLogs()])
-  }
-}
-
 onMounted(async () => {
   await Promise.all([fetchStats(), fetchRecentLogs()])
   initCharts()
   window.addEventListener('resize', handleResize)
-  document.addEventListener('visibilitychange', handleVisibilityChange)
   startAutoRefresh()
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
-  document.removeEventListener('visibilitychange', handleVisibilityChange)
   stopAutoRefresh()
   lineChart?.dispose()
   pieChart?.dispose()

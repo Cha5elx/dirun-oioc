@@ -40,9 +40,6 @@
           </el-button>
         </el-form-item>
       </el-form>
-      
-      <div class="login-footer">
-      </div>
     </div>
   </div>
 </template>
@@ -126,12 +123,5 @@ async function handleLogin() {
 
 .login-btn {
   width: 100%;
-}
-
-.login-footer {
-  text-align: center;
-  margin-top: 20px;
-  color: #909399;
-  font-size: 12px;
 }
 </style>

@@ -1,6 +1,6 @@
 <template>
   <div class="users-page">
-    <el-card shadow="hover">
+    <el-card shadow="always">
       <template #header>
         <div class="card-header">
           <span>用户管理</span>
@@ -125,7 +125,7 @@ async function handleSubmit() {
   try {
     if (isEdit.value) {
       await api.put(`/users/${form.id}`, { role: form.role })
-      ElMessage.success('更新成功')
+      ElMessage.success('修改成功')
     } else {
       await api.post('/users', form)
       ElMessage.success('添加成功')
@@ -141,12 +141,12 @@ async function handleSubmit() {
 
 async function resetPassword(user) {
   try {
-    await ElMessageBox.confirm(`确定要重置用户 "${user.username}" 的密码吗？`, '提示', {
+    await ElMessageBox.confirm('确定要重置该用户的密码吗？', '提示', {
       type: 'warning'
     })
-    
-    const res = await api.post(`/users/${user.id}/reset-password`)
-    ElMessage.success(`密码已重置为: ${res.data.password}`)
+    await api.post(`/users/${user.id}/reset-password`)
+    ElMessage.success('密码已重置')
+    fetchUsers()
   } catch (error) {
     if (error !== 'cancel') {
       console.error('重置密码失败:', error)
@@ -156,10 +156,9 @@ async function resetPassword(user) {
 
 async function deleteUser(user) {
   try {
-    await ElMessageBox.confirm(`确定要删除用户 "${user.username}" 吗？`, '警告', {
+    await ElMessageBox.confirm('确定要删除该用户吗？', '提示', {
       type: 'warning'
     })
-    
     await api.delete(`/users/${user.id}`)
     ElMessage.success('删除成功')
     fetchUsers()
