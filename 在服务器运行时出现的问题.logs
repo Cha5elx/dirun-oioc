@@ -1,0 +1,141 @@
+
+  Error: write EPIPE
+      at WriteWrap.onWriteComplete [as oncomplete] (node:internal/stream_base_commons:87:19)
+
+
+  Error [ERR_STREAM_PREMATURE_CLOSE]: Premature close
+      at ReadStream.onclose (node:internal/streams/end-of-stream:153:30)
+      at ReadStream.emit (node:events:536:35)
+      at emitCloseNT (node:internal/streams/destroy:148:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+
+
+  Error: write EPIPE
+      at WriteWrap.onWriteComplete [as oncomplete] (node:internal/stream_base_commons:87:19)
+
+
+  Error [ERR_STREAM_PREMATURE_CLOSE]: Premature close
+      at ReadStream.onclose (node:internal/streams/end-of-stream:153:30)
+      at ReadStream.emit (node:events:536:35)
+      at emitCloseNT (node:internal/streams/destroy:148:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+
+
+  Error: write EPIPE
+      at WriteWrap.onWriteComplete [as oncomplete] (node:internal/stream_base_commons:87:19)
+
+
+  Error [ERR_STREAM_PREMATURE_CLOSE]: Premature close
+      at ReadStream.onclose (node:internal/streams/end-of-stream:153:30)
+      at ReadStream.emit (node:events:536:35)
+      at emitCloseNT (node:internal/streams/destroy:148:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+
+
+  Error: write EPIPE
+      at WriteWrap.onWriteComplete [as oncomplete] (node:internal/stream_base_commons:87:19)
+
+
+  Error [ERR_STREAM_PREMATURE_CLOSE]: Premature close
+      at ReadStream.onclose (node:internal/streams/end-of-stream:153:30)
+      at ReadStream.emit (node:events:536:35)
+      at emitCloseNT (node:internal/streams/destroy:148:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+
+
+  Error: write EPIPE
+      at WriteWrap.onWriteComplete [as oncomplete] (node:internal/stream_base_commons:87:19)
+
+
+  Error [ERR_STREAM_PREMATURE_CLOSE]: Premature close
+      at ReadStream.onclose (node:internal/streams/end-of-stream:153:30)
+      at ReadStream.emit (node:events:536:35)
+      at emitCloseNT (node:internal/streams/destroy:148:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+
+
+  Error: write EPIPE
+      at WriteWrap.onWriteComplete [as oncomplete] (node:internal/stream_base_commons:87:19)
+
+
+  Error [ERR_STREAM_PREMATURE_CLOSE]: Premature close
+      at ReadStream.onclose (node:internal/streams/end-of-stream:153:30)
+      at ReadStream.emit (node:events:536:35)
+      at emitCloseNT (node:internal/streams/destroy:148:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+
+
+  Error: write EPIPE
+      at WriteWrap.onWriteComplete [as oncomplete] (node:internal/stream_base_commons:87:19)
+
+
+  Error [ERR_STREAM_PREMATURE_CLOSE]: Premature close
+      at ReadStream.onclose (node:internal/streams/end-of-stream:153:30)
+      at ReadStream.emit (node:events:536:35)
+      at emitCloseNT (node:internal/streams/destroy:148:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+
+
+  Error: write EPIPE
+      at WriteWrap.onWriteComplete [as oncomplete] (node:internal/stream_base_commons:87:19)
+
+
+  Error [ERR_STREAM_PREMATURE_CLOSE]: Premature close
+      at ReadStream.onclose (node:internal/streams/end-of-stream:153:30)
+      at ReadStream.emit (node:events:536:35)
+      at emitCloseNT (node:internal/streams/destroy:148:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+
+
+  Error: write EPIPE
+      at WriteWrap.onWriteComplete [as oncomplete] (node:internal/stream_base_commons:87:19)
+
+
+  Error [ERR_STREAM_PREMATURE_CLOSE]: Premature close
+      at ReadStream.onclose (node:internal/streams/end-of-stream:153:30)
+      at ReadStream.emit (node:events:536:35)
+      at emitCloseNT (node:internal/streams/destroy:148:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+
+
+  Error: write EPIPE
+      at WriteWrap.onWriteComplete [as oncomplete] (node:internal/stream_base_commons:87:19)
+
+
+  Error [ERR_STREAM_PREMATURE_CLOSE]: Premature close
+      at ReadStream.onclose (node:internal/streams/end-of-stream:153:30)
+      at ReadStream.emit (node:events:536:35)
+      at emitCloseNT (node:internal/streams/destroy:148:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+
+
+  Error: write EPIPE
+      at WriteWrap.onWriteComplete [as oncomplete] (node:internal/stream_base_commons:87:19)
+
+
+  Error [ERR_STREAM_PREMATURE_CLOSE]: Premature close
+      at ReadStream.onclose (node:internal/streams/end-of-stream:153:30)
+      at ReadStream.emit (node:events:536:35)
+      at emitCloseNT (node:internal/streams/destroy:148:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+
+
+  Error: read ECONNRESET
+      at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+
+
+
+[root@iZ2zefj7x5cmflzbegmbeyZ opt]# sudo netstat -tlnp | grep :80
+tcp6       0      0 :::80                   :::*                    LISTEN      79254/node          
+[root@iZ2zefj7x5cmflzbegmbeyZ opt]# ps aux | grep node
+root       60124  0.0  0.8 1108632 16096 ?       Sl   Apr16   0:00 /root/.trae-cn-server/bin/stable-fff89fe15d9b570cf2aae145a60174373f4c6f64-debian10/node /root/.trae-cn-server/bin/stable-fff89fe15d9b570cf2aae145a60174373f4c6f64-debian10/index_trae.js --start-server --host=127.0.0.1 --port=0 --connection-token-file /root/.trae-cn-server/.stable-fff89fe15d9b570cf2aae145a60174373f4c6f64-886571ba.token --telemetry-level all --enable-remote-auto-shutdown --remote-auto-shutdown-without-delay --accept-server-license-terms --default-folder /root --server-data-dir /root/.trae-cn-server --logsPath /root/.trae-cn-server/manager-logs/1776346569537_113721
+root       60149  0.2  8.0 22790368 153928 ?     Rl   Apr16   2:37 /root/.trae-cn-server/bin/stable-fff89fe15d9b570cf2aae145a60174373f4c6f64-debian10/node ./out/server-main.js --start-server --host=127.0.0.1 --port=0 --connection-token-file /root/.trae-cn-server/.stable-fff89fe15d9b570cf2aae145a60174373f4c6f64-886571ba.token --telemetry-level all --enable-remote-auto-shutdown --remote-auto-shutdown-without-delay --accept-server-license-terms --default-folder /root --server-data-dir /root/.trae-cn-server --logsPath /root/.trae-cn-server/manager-logs/1776346569537_113721 --port 36217
+root       60214  0.0  8.0 45356064 154968 ?     Sl   Apr16   1:00 /root/.trae-cn-server/bin/stable-fff89fe15d9b570cf2aae145a60174373f4c6f64-debian10/node /root/.trae-cn-server/bin/stable-fff89fe15d9b570cf2aae145a60174373f4c6f64-debian10/extensions/ai-completion/resource/aiserver/cue.js --use-electron-aha-ipc=false
+root       60326  0.0  3.4 1221924 65372 ?       Sl   Apr16   0:42 /root/.trae-cn-server/bin/stable-fff89fe15d9b570cf2aae145a60174373f4c6f64-debian10/node /root/.trae-cn-server/bin/stable-fff89fe15d9b570cf2aae145a60174373f4c6f64-debian10/out/bootstrap-fork --type=ptyHost --logsPath /root/.trae-cn-server/manager-logs/1776346569537_113721
+root       79254  0.0  2.6 11619156 49920 pts/0  Sl+  Apr16   0:15 node index.js
+root      185462  7.0  9.9 44072196 190292 ?     Sl   15:00   0:36 /root/.trae-cn-server/bin/stable-fff89fe15d9b570cf2aae145a60174373f4c6f64-debian10/node --dns-result-order=ipv4first /root/.trae-cn-server/bin/stable-fff89fe15d9b570cf2aae145a60174373f4c6f64-debian10/out/bootstrap-fork --type=extensionHost --transformURIs --max-old-space-size=4096 --useHostProxy=false
+root      185464  0.0  2.4 1325676 47364 ?       Sl   15:00   0:00 /root/.trae-cn-server/bin/stable-fff89fe15d9b570cf2aae145a60174373f4c6f64-debian10/node /root/.trae-cn-server/bin/stable-fff89fe15d9b570cf2aae145a60174373f4c6f64-debian10/out/bootstrap-fork --type=fileWatcher
+root      187566  0.0  2.2 1048064 43564 ?       Sl   15:02   0:00 /root/.trae-cn-server/bin/stable-fff89fe15d9b570cf2aae145a60174373f4c6f64-debian10/node /root/.trae-cn-server/bin/stable-fff89fe15d9b570cf2aae145a60174373f4c6f64-debian10/extensions/json-language-features/server/dist/node/jsonServerMain --node-ipc --clientProcessId=185462
+root      196749  0.0  0.0 221528   868 pts/3    S+   15:09   0:00 grep --color=auto node
+[root@iZ2zefj7x5cmflzbegmbeyZ opt]# ^C
+[root@iZ2zefj7x5cmflzbegmbeyZ opt]# 

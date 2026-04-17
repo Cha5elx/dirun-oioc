@@ -13,6 +13,10 @@ class OiocClient {
     this.userTokens = new Map();
     this.syskey = 'DIRUN';
     this.isProduction = config.server.env === 'production';
+    this.loginPromise = null;
+    this.loginRetryCount = 0;
+    this.maxLoginRetries = 3;
+    this.loginRetryDelay = 2000;
     
     this.axiosInstance = axios.create({
       baseURL: this.baseUrl,
@@ -94,25 +98,52 @@ class OiocClient {
    * @returns {Promise<object>} 登录结果，包含token
    */
   async login() {
-    try {
-      const response = await this.axiosInstance.post('/login/access-token', {
-        account: config.oioc.username,
-        password: config.oioc.password,
-        type: 'PDA',
-      });
-      
-      if (response.data && response.data.data && response.data.data.token) {
-        this.token = response.data.data.token;
-        this.tokenExpiry = Date.now() + (23 * 60 * 60 * 1000);
-        console.log('✅ 第三方系统登录成功，Token已保存');
-        return response.data.data;
-      } else {
-        throw new Error('登录失败：未返回token');
-      }
-    } catch (error) {
-      console.error('登录失败:', error.message);
-      throw error;
+    if (this.loginPromise) {
+      return this.loginPromise;
     }
+    
+    this.loginPromise = this._doLogin();
+    
+    try {
+      const result = await this.loginPromise;
+      return result;
+    } finally {
+      this.loginPromise = null;
+    }
+  }
+  
+  async _doLogin() {
+    let lastError = null;
+    
+    for (let attempt = 1; attempt <= this.maxLoginRetries; attempt++) {
+      try {
+        const response = await this.axiosInstance.post('/login/access-token', {
+          account: config.oioc.username,
+          password: config.oioc.password,
+          type: 'PDA',
+        });
+        
+        if (response.data && response.data.data && response.data.data.token) {
+          this.token = response.data.data.token;
+          this.tokenExpiry = Date.now() + (23 * 60 * 60 * 1000);
+          this.loginRetryCount = 0;
+          console.log('✅ 第三方系统登录成功，Token已保存');
+          return response.data.data;
+        } else {
+          throw new Error('登录失败：未返回token');
+        }
+      } catch (error) {
+        lastError = error;
+        console.error(`登录失败 (尝试 ${attempt}/${this.maxLoginRetries}):`, error.message);
+        
+        if (attempt < this.maxLoginRetries) {
+          console.log(`⏳ ${this.loginRetryDelay / 1000}秒后重试...`);
+          await new Promise(resolve => setTimeout(resolve, this.loginRetryDelay));
+        }
+      }
+    }
+    
+    throw lastError || new Error('登录失败：超过最大重试次数');
   }
 
   /**
@@ -157,8 +188,12 @@ class OiocClient {
    * 确保已登录（如果没有token则自动登录）
    */
   async ensureLogin() {
-    if (!this.token || (this.tokenExpiry && Date.now() >= this.tokenExpiry)) {
-      console.log('⚠️  Token不存在或已过期，自动登录...');
+    const now = Date.now();
+    const oneHour = 60 * 60 * 1000;
+    
+    if (!this.token || (this.tokenExpiry && now >= this.tokenExpiry - oneHour)) {
+      const reason = !this.token ? 'Token不存在' : 'Token即将过期';
+      console.log(`⚠️  ${reason}，自动登录...`);
       await this.login();
     }
   }

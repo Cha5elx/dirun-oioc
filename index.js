@@ -2,11 +2,46 @@ const Koa = require('koa');
 const bodyParser = require('koa-bodyparser');
 const serve = require('koa-static');
 const path = require('path');
+const fs = require('fs');
 const config = require('./src/config');
 const router = require('./src/routes');
 const { initDatabase } = require('./src/models');
 
+process.on('uncaughtException', (err) => {
+  if (err.code === 'EPIPE' || err.code === 'ECONNRESET') {
+    console.log('客户端连接提前关闭，忽略错误:', err.code);
+    return;
+  }
+  console.error('未捕获的异常:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  if (reason && (reason.code === 'EPIPE' || reason.code === 'ECONNRESET' || reason.code === 'ERR_STREAM_PREMATURE_CLOSE')) {
+    console.log('客户端连接提前关闭，忽略Promise错误:', reason.code || reason.message);
+    return;
+  }
+  console.error('未处理的Promise拒绝:', reason);
+});
+
 const app = new Koa();
+
+app.use(async (ctx, next) => {
+  try {
+    await next();
+  } catch (err) {
+    if (err.code === 'EPIPE' || err.code === 'ECONNRESET' || err.code === 'ERR_STREAM_PREMATURE_CLOSE') {
+      console.log(`[${new Date().toISOString()}] 客户端连接提前关闭: ${ctx.path}`);
+      return;
+    }
+    
+    console.error(`[${new Date().toISOString()}] 请求错误:`, err.message);
+    ctx.status = err.status || 500;
+    ctx.body = {
+      code: -1,
+      msg: err.message || '服务器内部错误',
+    };
+  }
+});
 
 app.use(bodyParser());
 
@@ -18,7 +53,7 @@ app.use(router.routes()).use(router.allowedMethods());
 app.use(async (ctx) => {
   if (!ctx.path.startsWith('/api') && !ctx.path.startsWith('/webhook') && !ctx.path.startsWith('/health')) {
     ctx.type = 'html';
-    ctx.body = require('fs').createReadStream(path.join(publicPath, 'index.html'));
+    ctx.body = await fs.promises.readFile(path.join(publicPath, 'index.html'));
   }
 });
 

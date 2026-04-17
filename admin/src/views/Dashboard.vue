@@ -1,5 +1,14 @@
 <template>
   <div class="dashboard">
+    <div class="dashboard-header">
+      <el-button type="primary" :icon="Refresh" :loading="refreshing" @click="handleRefresh">
+        {{ refreshing ? '刷新中...' : '刷新数据' }}
+      </el-button>
+      <span class="last-update" v-if="lastUpdateTime">
+        上次更新: {{ lastUpdateTime }}
+      </span>
+    </div>
+    
     <el-row :gutter="20" class="stat-cards">
       <el-col :span="6">
         <el-card shadow="always" class="stat-card">
@@ -108,6 +117,8 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { Refresh } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import api from '@/api'
 
@@ -116,8 +127,8 @@ const lineChartRef = ref()
 const pieChartRef = ref()
 let lineChart = null
 let pieChart = null
-let refreshTimer = null
-const REFRESH_INTERVAL = 30000
+const refreshing = ref(false)
+const lastUpdateTime = ref('')
 
 const stats = ref({
   todayOrders: 0,
@@ -152,23 +163,31 @@ function goToLogs() {
 }
 
 async function fetchStats() {
-  try {
-    const res = await api.get('/stats/summary')
-    stats.value = res.data
-  } catch (error) {
-    console.error('获取统计数据失败:', error)
-  }
+  const res = await api.get('/stats/summary')
+  stats.value = res.data
 }
 
 async function fetchRecentLogs() {
+  const res = await api.get('/logs', { params: { limit: 10 } })
+  recentLogs.value = res.data.list.map(log => ({
+    ...log,
+    type: typeMap[log.type] || log.type
+  }))
+}
+
+async function handleRefresh() {
+  if (refreshing.value) return
+  
+  refreshing.value = true
   try {
-    const res = await api.get('/logs', { params: { limit: 10 } })
-    recentLogs.value = res.data.list.map(log => ({
-      ...log,
-      type: typeMap[log.type] || log.type
-    }))
+    await Promise.all([fetchStats(), fetchRecentLogs()])
+    lastUpdateTime.value = new Date().toLocaleTimeString('zh-CN')
+    ElMessage.success('数据刷新成功')
   } catch (error) {
-    console.error('获取日志失败:', error)
+    console.error('刷新数据失败:', error)
+    ElMessage.error('刷新数据失败')
+  } finally {
+    refreshing.value = false
   }
 }
 
@@ -221,29 +240,14 @@ function handleResize() {
   pieChart?.resize()
 }
 
-function startAutoRefresh() {
-  refreshTimer = setInterval(async () => {
-    await Promise.all([fetchStats(), fetchRecentLogs()])
-  }, REFRESH_INTERVAL)
-}
-
-function stopAutoRefresh() {
-  if (refreshTimer) {
-    clearInterval(refreshTimer)
-    refreshTimer = null
-  }
-}
-
 onMounted(async () => {
-  await Promise.all([fetchStats(), fetchRecentLogs()])
+  await handleRefresh()
   initCharts()
   window.addEventListener('resize', handleResize)
-  startAutoRefresh()
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
-  stopAutoRefresh()
   lineChart?.dispose()
   pieChart?.dispose()
 })
@@ -254,6 +258,17 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.last-update {
+  color: #909399;
+  font-size: 14px;
 }
 
 .stat-cards {
