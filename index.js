@@ -58,6 +58,11 @@ app.use(async (ctx) => {
 });
 
 async function start() {
+  if (!config.jwt.secret) {
+    console.error('致命错误：JWT_SECRET 环境变量未设置。请在 .env 文件中配置一个强随机密钥（至少32位）。');
+    process.exit(1);
+  }
+  
   const dbReady = await initDatabase();
   if (!dbReady) {
     console.error('数据库初始化失败，服务启动终止');

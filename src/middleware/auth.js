@@ -1,6 +1,12 @@
 const jwt = require('jsonwebtoken');
+const config = require('../config');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dirun-oioc-secret-key-2024';
+function getJwtSecret() {
+  if (!config.jwt.secret) {
+    throw new Error('JWT_SECRET 环境变量未设置，请在 .env 文件中配置');
+  }
+  return config.jwt.secret;
+}
 
 function authMiddleware(ctx, next) {
   const authorization = ctx.headers.authorization;
@@ -17,7 +23,7 @@ function authMiddleware(ctx, next) {
   const token = authorization.slice(7);
   
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, getJwtSecret());
     ctx.state.user = decoded;
     return next();
   } catch (error) {
@@ -32,13 +38,13 @@ function authMiddleware(ctx, next) {
 function generateToken(user) {
   return jwt.sign(
     { id: user.id, username: user.username, role: user.role },
-    JWT_SECRET,
-    { expiresIn: '7d' }
+    getJwtSecret(),
+    { expiresIn: config.jwt.expiresIn }
   );
 }
 
 module.exports = {
   authMiddleware,
   generateToken,
-  JWT_SECRET
+  getJwtSecret
 };
