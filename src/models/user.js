@@ -1,79 +1,61 @@
-const { readDb, writeDb } = require('./jsonDb');
+const UserModel = require('./user.model');
 const bcrypt = require('bcryptjs');
 
 async function findAll() {
-  const db = readDb();
-  return db.users.map(u => {
-    const { password, ...user } = u;
-    return user;
+  const users = await UserModel.findAll({
+    attributes: { exclude: ['password'] },
+    order: [['id', 'ASC']]
   });
+  return users.map(u => u.toJSON());
 }
 
 async function findById(id) {
-  const db = readDb();
-  return db.users.find(u => u.id === id);
+  const user = await UserModel.findByPk(id);
+  return user ? user.toJSON() : null;
 }
 
 async function findByUsername(username) {
-  const db = readDb();
-  return db.users.find(u => u.username === username);
+  const user = await UserModel.findOne({ where: { username } });
+  return user ? user.toJSON() : null;
 }
 
 async function create(userData) {
-  const db = readDb();
-  const maxId = db.users.reduce((max, u) => Math.max(max, u.id), 0);
   const hashedPassword = await bcrypt.hash(userData.password, 10);
   
-  const user = {
-    id: maxId + 1,
+  const user = await UserModel.create({
     username: userData.username,
     password: hashedPassword,
     role: userData.role || 'user',
-    createdAt: new Date().toISOString(),
+    createdAt: new Date(),
     lastLoginAt: null
-  };
+  });
   
-  db.users.push(user);
-  writeDb(db);
-  
-  const { password, ...result } = user;
+  const { password, ...result } = user.toJSON();
   return result;
 }
 
 async function update(id, updates) {
-  const db = readDb();
-  const index = db.users.findIndex(u => u.id === id);
+  const user = await UserModel.findByPk(id);
+  if (!user) return null;
   
-  if (index === -1) return null;
-  
-  db.users[index] = { ...db.users[index], ...updates };
-  writeDb(db);
-  
-  const { password, ...result } = db.users[index];
+  await user.update(updates);
+  const { password, ...result } = user.toJSON();
   return result;
 }
 
 async function updatePassword(id, hashedPassword) {
-  const db = readDb();
-  const index = db.users.findIndex(u => u.id === id);
+  const user = await UserModel.findByPk(id);
+  if (!user) return false;
   
-  if (index === -1) return false;
-  
-  db.users[index].password = hashedPassword;
-  writeDb(db);
-  
+  await user.update({ password: hashedPassword });
   return true;
 }
 
 async function remove(id) {
-  const db = readDb();
-  const index = db.users.findIndex(u => u.id === id);
+  const user = await UserModel.findByPk(id);
+  if (!user) return false;
   
-  if (index === -1) return false;
-  
-  db.users.splice(index, 1);
-  writeDb(db);
-  
+  await user.destroy();
   return true;
 }
 

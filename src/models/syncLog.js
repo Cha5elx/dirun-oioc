@@ -1,67 +1,70 @@
-const { readDb, writeDb } = require('./jsonDb');
+const SyncLogModel = require('./syncLog.model');
+const { Op } = require('sequelize');
 
 async function create(logData) {
-  const db = readDb();
-  const maxId = db.syncLogs.reduce((max, l) => Math.max(max, l.id || 0), 0);
-  
   const now = new Date();
   const beijingTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
   const defaultTimestamp = beijingTime.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '');
   
-  const log = {
-    id: maxId + 1,
+  const log = await SyncLogModel.create({
     type: logData.type,
     status: logData.status,
     data: logData.data || null,
     error: logData.error || null,
     timestamp: logData.timestamp || defaultTimestamp
-  };
+  });
   
-  db.syncLogs.push(log);
-  writeDb(db);
-  
-  return log;
+  return log.toJSON();
 }
 
 async function findAll(options = {}) {
-  const db = readDb();
-  let logs = [...db.syncLogs];
+  const where = {};
   
   if (options.type) {
-    logs = logs.filter(l => l.type === options.type);
+    where.type = options.type;
   }
   
   if (options.status) {
-    logs = logs.filter(l => l.status === options.status);
+    where.status = options.status;
   }
   
   if (options.startDate && options.endDate) {
-    const start = new Date(options.startDate);
-    const end = new Date(options.endDate);
-    logs = logs.filter(l => {
-      const t = new Date(l.timestamp);
-      return t >= start && t <= end;
-    });
+    where.timestamp = {
+      [Op.between]: [options.startDate, options.endDate]
+    };
   }
   
-  logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  const total = await SyncLogModel.count({ where });
   
-  const total = logs.length;
   const page = options.page || 1;
   const pageSize = options.pageSize || 20;
   const offset = (page - 1) * pageSize;
   
-  const list = logs.slice(offset, offset + pageSize);
+  const list = await SyncLogModel.findAll({
+    where,
+    order: [['timestamp', 'DESC']],
+    limit: pageSize,
+    offset
+  });
   
-  return { list, total };
+  return { 
+    list: list.map(l => l.toJSON()), 
+    total 
+  };
 }
 
 async function getStats() {
-  const db = readDb();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const todayStr = today.toISOString().slice(0, 10);
   
-  const todayLogs = db.syncLogs.filter(l => new Date(l.timestamp) >= today);
+  const todayLogs = await SyncLogModel.findAll({
+    where: {
+      timestamp: {
+        [Op.like]: `${todayStr}%`
+      }
+    }
+  });
   
   const stats = {
     todayOrders: 0,
