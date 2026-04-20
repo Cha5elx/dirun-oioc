@@ -14,8 +14,9 @@ function authMiddleware(ctx, next) {
   if (!authorization || !authorization.startsWith('Bearer ')) {
     ctx.status = 401;
     ctx.body = {
-      code: 401,
-      message: '未登录或登录已过期'
+      success: false,
+      message: '未登录或登录已过期',
+      code: 'AUTH_ERROR',
     };
     return;
   }
@@ -29,8 +30,9 @@ function authMiddleware(ctx, next) {
   } catch (error) {
     ctx.status = 401;
     ctx.body = {
-      code: 401,
-      message: '登录已过期，请重新登录'
+      success: false,
+      message: '登录已过期，请重新登录',
+      code: 'AUTH_ERROR',
     };
   }
 }

@@ -1,24 +1,21 @@
 const { User, SyncLog } = require('../models');
 const { generateToken } = require('../middleware/auth');
 const oiocClient = require('../clients/oioc');
+const { isProduction, logError, paramError, authError, notFoundError } = require('../utils/response');
 
 async function login(ctx) {
   const { username, password } = ctx.request.body;
   
   if (!username || !password) {
-    ctx.status = 400;
-    ctx.body = { code: 400, message: '用户名和密码不能为空' };
+    paramError(ctx, '用户名和密码不能为空');
     return;
   }
   
   try {
-    const originalUsername = oiocClient.getUsername ? oiocClient.getUsername() : null;
-    
     const loginResult = await oiocClient.loginWithCredentials(username, password);
     
     if (!loginResult || !loginResult.token) {
-      ctx.status = 401;
-      ctx.body = { code: 401, message: '用户名或密码错误' };
+      authError(ctx, '用户名或密码错误');
       return;
     }
     
@@ -37,7 +34,7 @@ async function login(ctx) {
     const token = generateToken(user);
     
     ctx.body = {
-      code: 0,
+      success: true,
       message: '登录成功',
       data: {
         token,
@@ -49,130 +46,246 @@ async function login(ctx) {
       }
     };
   } catch (error) {
-    console.error('登录失败:', error.message);
-    ctx.status = 401;
-    ctx.body = { code: 401, message: '用户名或密码错误' };
+    logError(error, '登录');
+    authError(ctx, '用户名或密码错误');
   }
 }
 
 async function getUsers(ctx) {
-  const users = await User.findAll();
-  ctx.body = {
-    code: 0,
-    data: users
-  };
+  try {
+    const users = await User.findAll();
+    ctx.body = {
+      success: true,
+      data: users
+    };
+  } catch (error) {
+    logError(error, '获取用户列表');
+    
+    ctx.status = 500;
+    
+    if (isProduction()) {
+      ctx.body = {
+        success: false,
+        message: '获取用户列表失败',
+        code: 'INTERNAL_ERROR',
+      };
+    } else {
+      ctx.body = {
+        success: false,
+        message: error.message || '获取用户列表失败',
+        code: 'INTERNAL_ERROR',
+        detail: error.stack,
+      };
+    }
+  }
 }
 
 async function createUser(ctx) {
   const { username, password, role } = ctx.request.body;
   
   if (!username || !password) {
-    ctx.status = 400;
-    ctx.body = { code: 400, message: '用户名和密码不能为空' };
+    paramError(ctx, '用户名和密码不能为空');
     return;
   }
   
-  const existing = await User.findByUsername(username);
-  if (existing) {
-    ctx.status = 400;
-    ctx.body = { code: 400, message: '用户名已存在' };
-    return;
+  try {
+    const existing = await User.findByUsername(username);
+    if (existing) {
+      paramError(ctx, '用户名已存在');
+      return;
+    }
+    
+    const user = await User.create({
+      username,
+      password,
+      role: role || 'user'
+    });
+    
+    ctx.body = {
+      success: true,
+      message: '创建成功',
+      data: user
+    };
+  } catch (error) {
+    logError(error, '创建用户');
+    
+    ctx.status = 500;
+    
+    if (isProduction()) {
+      ctx.body = {
+        success: false,
+        message: '创建用户失败',
+        code: 'INTERNAL_ERROR',
+      };
+    } else {
+      ctx.body = {
+        success: false,
+        message: error.message || '创建用户失败',
+        code: 'INTERNAL_ERROR',
+        detail: error.stack,
+      };
+    }
   }
-  
-  const user = await User.create({
-    username,
-    password,
-    role: role || 'user'
-  });
-  
-  ctx.body = {
-    code: 0,
-    message: '创建成功',
-    data: user
-  };
 }
 
 async function updateUser(ctx) {
   const { id } = ctx.params;
   const { role } = ctx.request.body;
   
-  const user = await User.findById(parseInt(id));
-  if (!user) {
-    ctx.status = 404;
-    ctx.body = { code: 404, message: '用户不存在' };
-    return;
+  try {
+    const user = await User.findById(parseInt(id));
+    if (!user) {
+      notFoundError(ctx, '用户不存在');
+      return;
+    }
+    
+    await User.update(parseInt(id), { role });
+    
+    ctx.body = {
+      success: true,
+      message: '更新成功'
+    };
+  } catch (error) {
+    logError(error, '更新用户');
+    
+    ctx.status = 500;
+    
+    if (isProduction()) {
+      ctx.body = {
+        success: false,
+        message: '更新用户失败',
+        code: 'INTERNAL_ERROR',
+      };
+    } else {
+      ctx.body = {
+        success: false,
+        message: error.message || '更新用户失败',
+        code: 'INTERNAL_ERROR',
+        detail: error.stack,
+      };
+    }
   }
-  
-  await User.update(parseInt(id), { role });
-  
-  ctx.body = {
-    code: 0,
-    message: '更新成功'
-  };
 }
 
 async function resetPassword(ctx) {
-  ctx.status = 400;
-  ctx.body = { 
-    code: 400, 
-    message: '使用一物一码系统账号登录，无法重置密码，请在第三方系统中修改' 
-  };
+  paramError(ctx, '使用一物一码系统账号登录，无法重置密码，请在第三方系统中修改');
 }
 
 async function deleteUser(ctx) {
   const { id } = ctx.params;
   
   if (parseInt(id) === 1) {
-    ctx.status = 400;
-    ctx.body = { code: 400, message: '不能删除默认管理员' };
+    paramError(ctx, '不能删除默认管理员');
     return;
   }
   
-  const user = await User.findById(parseInt(id));
-  if (!user) {
-    ctx.status = 404;
-    ctx.body = { code: 404, message: '用户不存在' };
-    return;
+  try {
+    const user = await User.findById(parseInt(id));
+    if (!user) {
+      notFoundError(ctx, '用户不存在');
+      return;
+    }
+    
+    await User.remove(parseInt(id));
+    
+    ctx.body = {
+      success: true,
+      message: '删除成功'
+    };
+  } catch (error) {
+    logError(error, '删除用户');
+    
+    ctx.status = 500;
+    
+    if (isProduction()) {
+      ctx.body = {
+        success: false,
+        message: '删除用户失败',
+        code: 'INTERNAL_ERROR',
+      };
+    } else {
+      ctx.body = {
+        success: false,
+        message: error.message || '删除用户失败',
+        code: 'INTERNAL_ERROR',
+        detail: error.stack,
+      };
+    }
   }
-  
-  await User.remove(parseInt(id));
-  
-  ctx.body = {
-    code: 0,
-    message: '删除成功'
-  };
 }
 
 async function getLogs(ctx) {
   const { page = 1, pageSize = 20, type, status, startDate, endDate } = ctx.query;
   
-  const result = await SyncLog.findAll({
-    page: parseInt(page),
-    pageSize: parseInt(pageSize),
-    type,
-    status,
-    startDate,
-    endDate
-  });
-  
-  ctx.body = {
-    code: 0,
-    data: {
-      list: result.list,
-      total: result.total,
+  try {
+    const result = await SyncLog.findAll({
       page: parseInt(page),
-      pageSize: parseInt(pageSize)
+      pageSize: parseInt(pageSize),
+      type,
+      status,
+      startDate,
+      endDate
+    });
+    
+    ctx.body = {
+      success: true,
+      data: {
+        list: result.list,
+        total: result.total,
+        page: parseInt(page),
+        pageSize: parseInt(pageSize)
+      }
+    };
+  } catch (error) {
+    logError(error, '获取日志列表');
+    
+    ctx.status = 500;
+    
+    if (isProduction()) {
+      ctx.body = {
+        success: false,
+        message: '获取日志列表失败',
+        code: 'INTERNAL_ERROR',
+      };
+    } else {
+      ctx.body = {
+        success: false,
+        message: error.message || '获取日志列表失败',
+        code: 'INTERNAL_ERROR',
+        detail: error.stack,
+      };
     }
-  };
+  }
 }
 
 async function getStats(ctx) {
-  const stats = await SyncLog.getStats();
-  
-  ctx.body = {
-    code: 0,
-    data: stats
-  };
+  try {
+    const stats = await SyncLog.getStats();
+    
+    ctx.body = {
+      success: true,
+      data: stats
+    };
+  } catch (error) {
+    logError(error, '获取统计数据');
+    
+    ctx.status = 500;
+    
+    if (isProduction()) {
+      ctx.body = {
+        success: false,
+        message: '获取统计数据失败',
+        code: 'INTERNAL_ERROR',
+      };
+    } else {
+      ctx.body = {
+        success: false,
+        message: error.message || '获取统计数据失败',
+        code: 'INTERNAL_ERROR',
+        detail: error.stack,
+      };
+    }
+  }
 }
 
 async function queryCode(ctx) {
@@ -199,7 +312,7 @@ async function queryCode(ctx) {
   };
   
   ctx.body = {
-    code: 0,
+    success: true,
     data: mockResult
   };
 }

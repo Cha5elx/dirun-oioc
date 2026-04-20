@@ -6,6 +6,7 @@ const fs = require('fs');
 const config = require('./src/config');
 const router = require('./src/routes');
 const { initDatabase } = require('./src/models');
+const { isProduction, logError } = require('./src/utils/response');
 
 process.on('uncaughtException', (err) => {
   if (err.code === 'EPIPE' || err.code === 'ECONNRESET') {
@@ -34,12 +35,24 @@ app.use(async (ctx, next) => {
       return;
     }
     
-    console.error(`[${new Date().toISOString()}] 请求错误:`, err.message);
+    logError(err, '全局错误');
+    
     ctx.status = err.status || 500;
-    ctx.body = {
-      code: -1,
-      msg: err.message || '服务器内部错误',
-    };
+    
+    if (isProduction()) {
+      ctx.body = {
+        success: false,
+        message: '服务器内部错误，请稍后重试',
+        code: 'INTERNAL_ERROR',
+      };
+    } else {
+      ctx.body = {
+        success: false,
+        message: err.message || '服务器内部错误',
+        code: 'INTERNAL_ERROR',
+        detail: err.stack,
+      };
+    }
   }
 });
 

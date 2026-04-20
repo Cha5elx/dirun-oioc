@@ -1,8 +1,8 @@
 const syncService = require('../services/sync');
+const { isProduction, logError } = require('../utils/response');
 
 class WebhookController {
   async handleYouzanWebhook(ctx) {
-    // 处理有赞推送的消息
     try {
       const { type, data } = ctx.request.body;
       
@@ -12,17 +12,14 @@ class WebhookController {
       
       switch (type) {
         case 'trade_TradeCreated':
-          // 订单创建
           result = await syncService.handleOrderCreated(data);
           break;
           
         case 'trade_TradePaid':
-          // 订单支付
           result = await syncService.handleOrderCreated(data);
           break;
           
         case 'trade_TradeRefundCreated':
-          // 退款申请
           result = await syncService.handleRefund(data);
           break;
           
@@ -31,21 +28,33 @@ class WebhookController {
       }
       
       ctx.body = {
-        code: 0,
-        msg: 'success',
+        success: true,
+        message: 'success',
         data: result,
       };
     } catch (error) {
-      console.error('处理有赞Webhook失败:', error);
-      ctx.body = {
-        code: -1,
-        msg: error.message,
-      };
+      logError(error, '有赞Webhook');
+      
+      ctx.status = 500;
+      
+      if (isProduction()) {
+        ctx.body = {
+          success: false,
+          message: '处理请求失败',
+          code: 'WEBHOOK_ERROR',
+        };
+      } else {
+        ctx.body = {
+          success: false,
+          message: error.message || '处理请求失败',
+          code: 'WEBHOOK_ERROR',
+          detail: error.stack,
+        };
+      }
     }
   }
 
   async handleOiocWebhook(ctx) {
-    // 处理第三方一物一码推送的消息
     try {
       const { type, data } = ctx.request.body;
       
@@ -55,17 +64,14 @@ class WebhookController {
       
       switch (type) {
         case 'inbound':
-          // 入库通知
           result = await syncService.handleInbound(data);
           break;
           
         case 'outbound':
-          // 出库/发货通知
           result = await syncService.handleOutbound(data);
           break;
           
         case 'return_complete':
-          // 退货完成通知
           result = await syncService.handleReturnComplete(data);
           break;
           
@@ -74,16 +80,29 @@ class WebhookController {
       }
       
       ctx.body = {
-        code: 0,
-        msg: 'success',
+        success: true,
+        message: 'success',
         data: result,
       };
     } catch (error) {
-      console.error('处理OIOC Webhook失败:', error);
-      ctx.body = {
-        code: -1,
-        msg: error.message,
-      };
+      logError(error, 'OIOC Webhook');
+      
+      ctx.status = 500;
+      
+      if (isProduction()) {
+        ctx.body = {
+          success: false,
+          message: '处理请求失败',
+          code: 'WEBHOOK_ERROR',
+        };
+      } else {
+        ctx.body = {
+          success: false,
+          message: error.message || '处理请求失败',
+          code: 'WEBHOOK_ERROR',
+          detail: error.stack,
+        };
+      }
     }
   }
 
