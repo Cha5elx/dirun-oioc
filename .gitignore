@@ -12,6 +12,7 @@ package-lock.json
 # Logs
 logs/
 *.log
+*.logs
 output.log
 npm-debug.log*
 
@@ -38,9 +39,16 @@ build/
 *.backup
 *~
 
-# Database (optional - uncomment if needed)
-# database/*.db
-# database/*.json
+# ===== 数据库文件（包含敏感数据，禁止提交）=====
+database/*.db
+database/*.db-journal
+database/*.db-wal
+database/*.db-shm
+database/*.db.backup.*
+database/backups/
+
+# ===== PM2 配置（可能含敏感信息）=====
+ecosystem.config.js
 
 # Test coverage
 coverage/
