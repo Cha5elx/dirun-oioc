@@ -8,8 +8,8 @@ echo ""
 # 配置变量
 PROJECT_NAME="dirun_oioc"
 PROJECT_DIR="/opt/$PROJECT_NAME"
-GITHUB_REPO="https://github.com/你的用户名/dirun_oioc.git"  # 请修改为你的GitHub仓库地址
-NODE_VERSION="16"
+GITHUB_REPO="https://github.com/Cha5elx/dirun-oioc.git"
+NODE_VERSION="18"
 
 # 检查是否为root用户
 if [ "$EUID" -ne 0 ]; then
@@ -17,34 +17,74 @@ if [ "$EUID" -ne 0 ]; then
     echo "   如果遇到权限问题，请使用: sudo bash deploy-server.sh"
 fi
 
-# 1. 安装Node.js
-echo "📦 检查Node.js..."
-if ! command -v node &> /dev/null; then
-    echo "安装Node.js $NODE_VERSION..."
-    curl -fsSL https://rpm.nodesource.com/setup_$NODE_VERSION.x | sudo bash -
-    sudo yum install -y nodejs
+# 1. 安装编译工具（SQLite3 原生模块需要）
+echo "📦 安装编译工具..."
+if ! command -v gcc &> /dev/null; then
+    echo "安装 build-essential 和 python3..."
+    if command -v apt-get &> /dev/null; then
+        sudo apt-get update
+        sudo apt-get install -y build-essential python3
+    elif command -v yum &> /dev/null; then
+        sudo yum groupinstall -y "Development Tools"
+        sudo yum install -y python3
+    fi
 else
-    echo "✅ Node.js已安装: $(node -v)"
+    echo "✅ 编译工具已安装"
 fi
 
-# 2. 安装PM2
+# 2. 安装Node.js（使用nvm）
+echo ""
+echo "📦 检查Node.js..."
+
+# 加载nvm（如果已安装）
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+
+if ! command -v node &> /dev/null && [ ! -s "$NVM_DIR/nvm.sh" ]; then
+    echo "安装nvm..."
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+    
+    # 加载nvm
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+fi
+
+# 确保nvm已加载
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+    . "$NVM_DIR/nvm.sh"
+    
+    echo "安装Node.js $NODE_VERSION..."
+    nvm install $NODE_VERSION
+    nvm use $NODE_VERSION
+    nvm alias default $NODE_VERSION
+    echo "✅ Node.js已安装: $(node -v)"
+else
+    echo "❌ nvm安装失败"
+    exit 1
+fi
+
+# 3. 安装PM2
 echo ""
 echo "📦 检查PM2..."
 if ! command -v pm2 &> /dev/null; then
     echo "安装PM2..."
-    sudo npm install -g pm2
+    npm install -g pm2
 else
     echo "✅ PM2已安装"
 fi
 
-# 3. 安装Nginx（可选）
+# 4. 安装Nginx（可选）
 echo ""
 echo "📦 检查Nginx..."
 if ! command -v nginx &> /dev/null; then
     read -p "是否安装Nginx? (y/n): " install_nginx
     if [ "$install_nginx" = "y" ]; then
         echo "安装Nginx..."
-        sudo yum install -y nginx
+        if command -v apt-get &> /dev/null; then
+            sudo apt-get install -y nginx
+        elif command -v yum &> /dev/null; then
+            sudo yum install -y nginx
+        fi
         sudo systemctl enable nginx
         echo "✅ Nginx安装完成"
     fi
@@ -52,7 +92,7 @@ else
     echo "✅ Nginx已安装"
 fi
 
-# 4. 克隆或更新代码
+# 5. 克隆或更新代码
 echo ""
 echo "📥 获取项目代码..."
 if [ -d "$PROJECT_DIR" ]; then
@@ -67,12 +107,18 @@ else
     cd "$PROJECT_DIR"
 fi
 
-# 5. 安装依赖
+# 6. 安装依赖
 echo ""
 echo "📦 安装后端依赖..."
+
+# 确保使用正确的Node.js版本
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+nvm use $NODE_VERSION
+
 npm install
 
-# 6. 构建前端
+# 7. 构建前端
 echo ""
 echo "🏗️  构建前端..."
 cd admin
@@ -89,7 +135,7 @@ fi
 
 cd ..
 
-# 7. 配置环境变量
+# 8. 配置环境变量
 echo ""
 echo "⚙️  配置环境变量..."
 if [ ! -f ".env" ]; then
@@ -117,7 +163,13 @@ else
     echo "✅ .env文件已存在"
 fi
 
-# 8. 配置防火墙
+# 9. 创建日志目录
+echo ""
+echo "📁 创建日志目录..."
+mkdir -p logs
+echo "✅ 日志目录已创建"
+
+# 10. 配置防火墙
 echo ""
 echo "🔒 配置防火墙..."
 if command -v firewall-cmd &> /dev/null; then
@@ -127,15 +179,33 @@ if command -v firewall-cmd &> /dev/null; then
     sudo firewall-cmd --permanent --add-port=3000/tcp
     sudo firewall-cmd --reload
     echo "✅ 防火墙配置完成"
+elif command -v ufw &> /dev/null; then
+    sudo ufw allow 80/tcp
+    sudo ufw allow 443/tcp
+    sudo ufw allow 22/tcp
+    sudo ufw allow 3000/tcp
+    echo "✅ 防火墙配置完成"
 else
-    echo "⚠️  未检测到firewalld，请手动配置防火墙"
+    echo "⚠️  未检测到firewalld或ufw，请手动配置防火墙"
 fi
 
-# 9. 启动服务
+# 11. 启动服务
 echo ""
 echo "🚀 启动服务..."
+
+# 确保使用正确的Node.js版本
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+nvm use $NODE_VERSION
+
 pm2 delete dirun-oioc 2>/dev/null
-pm2 start index.js --name dirun-oioc
+
+# 使用 ecosystem.config.js（如果存在）
+if [ -f "ecosystem.config.js" ]; then
+    pm2 start ecosystem.config.js --env production
+else
+    pm2 start index.js --name dirun-oioc
+fi
 
 # 设置开机自启
 pm2 startup
@@ -145,7 +215,7 @@ echo ""
 echo "✅ 服务启动成功！"
 pm2 status
 
-# 10. 配置Nginx（如果已安装）
+# 12. 配置Nginx（如果已安装）
 if command -v nginx &> /dev/null; then
     echo ""
     read -p "是否配置Nginx反向代理? (y/n): " config_nginx
@@ -177,7 +247,17 @@ EOF
     fi
 fi
 
-# 11. 显示部署信息
+# 13. 健康检查
+echo ""
+echo "🏥 健康检查..."
+sleep 3
+if curl -s http://localhost:3000/health > /dev/null; then
+    echo "✅ 服务健康检查通过"
+else
+    echo "⚠️  服务健康检查失败，请检查日志: pm2 logs dirun-oioc"
+fi
+
+# 14. 显示部署信息
 echo ""
 echo "========================================="
 echo "  🎉 部署完成！"
@@ -185,6 +265,7 @@ echo "========================================="
 echo ""
 echo "项目目录: $PROJECT_DIR"
 echo "日志目录: $PROJECT_DIR/logs"
+echo "Node.js: $(node -v)"
 echo ""
 echo "服务管理命令："
 echo "  查看状态: pm2 status"
