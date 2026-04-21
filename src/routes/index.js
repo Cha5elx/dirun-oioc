@@ -24,4 +24,10 @@ router.get('/api/logs', authMiddleware, adminController.getLogs);
 router.get('/api/stats/summary', authMiddleware, adminController.getStats);
 router.get('/api/query/code/:code', authMiddleware, adminController.queryCode);
 
+router.get('/api/product-mappings', authMiddleware, adminController.getProductMappings);
+router.post('/api/product-mappings', authMiddleware, adminController.createProductMapping);
+router.put('/api/product-mappings/:id', authMiddleware, adminController.updateProductMapping);
+router.delete('/api/product-mappings/:id', authMiddleware, adminController.deleteProductMapping);
+router.get('/api/product-mappings/search', authMiddleware, adminController.searchProductMapping);
+
 module.exports = router;

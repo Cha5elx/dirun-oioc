@@ -1,6 +1,7 @@
 const sequelize = require('./database');
 const UserModel = require('./user.model');
 const SyncLogModel = require('./syncLog.model');
+const ProductMappingModel = require('./productMapping.model');
 const bcrypt = require('bcryptjs');
 
 async function initDatabase() {
@@ -39,5 +40,6 @@ async function initDatabase() {
 module.exports = {
   initDatabase,
   User: require('./user'),
-  SyncLog: require('./syncLog')
+  SyncLog: require('./syncLog'),
+  ProductMapping: require('./productMapping')
 };

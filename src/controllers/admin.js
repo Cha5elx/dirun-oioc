@@ -1,4 +1,4 @@
-const { User, SyncLog } = require('../models');
+const { User, SyncLog, ProductMapping } = require('../models');
 const { generateToken } = require('../middleware/auth');
 const oiocClient = require('../clients/oioc');
 const { isProduction, logError, paramError, authError, notFoundError } = require('../utils/response');
@@ -317,6 +317,229 @@ async function queryCode(ctx) {
   };
 }
 
+async function getProductMappings(ctx) {
+  const { page = 1, pageSize = 20, search } = ctx.query;
+  
+  try {
+    const result = await ProductMapping.findAll({
+      page: parseInt(page),
+      pageSize: parseInt(pageSize),
+      search
+    });
+    
+    ctx.body = {
+      success: true,
+      data: {
+        list: result.list,
+        total: result.total,
+        page: parseInt(page),
+        pageSize: parseInt(pageSize)
+      }
+    };
+  } catch (error) {
+    logError(error, '获取产品映射列表');
+    
+    ctx.status = 500;
+    
+    if (isProduction()) {
+      ctx.body = {
+        success: false,
+        message: '获取产品映射列表失败',
+        code: 'INTERNAL_ERROR',
+      };
+    } else {
+      ctx.body = {
+        success: false,
+        message: error.message || '获取产品映射列表失败',
+        code: 'INTERNAL_ERROR',
+        detail: error.stack,
+      };
+    }
+  }
+}
+
+async function createProductMapping(ctx) {
+  const { youzanItemId, youzanSkuId, youzanItemName, oiocProductCode, oiocProductName } = ctx.request.body;
+  
+  if (!youzanItemId || !youzanSkuId || !oiocProductCode) {
+    paramError(ctx, '有赞商品ID、SKU ID 和第三方产品编码不能为空');
+    return;
+  }
+  
+  try {
+    const existing = await ProductMapping.findByYouzanSku(youzanSkuId);
+    if (existing) {
+      paramError(ctx, '该有赞 SKU ID 已存在映射关系');
+      return;
+    }
+    
+    const mapping = await ProductMapping.create({
+      youzanItemId,
+      youzanSkuId,
+      youzanItemName,
+      oiocProductCode,
+      oiocProductName
+    });
+    
+    ctx.body = {
+      success: true,
+      message: '创建成功',
+      data: mapping
+    };
+  } catch (error) {
+    logError(error, '创建产品映射');
+    
+    ctx.status = 500;
+    
+    if (isProduction()) {
+      ctx.body = {
+        success: false,
+        message: '创建产品映射失败',
+        code: 'INTERNAL_ERROR',
+      };
+    } else {
+      ctx.body = {
+        success: false,
+        message: error.message || '创建产品映射失败',
+        code: 'INTERNAL_ERROR',
+        detail: error.stack,
+      };
+    }
+  }
+}
+
+async function updateProductMapping(ctx) {
+  const { id } = ctx.params;
+  const { youzanItemId, youzanSkuId, youzanItemName, oiocProductCode, oiocProductName } = ctx.request.body;
+  
+  try {
+    const mapping = await ProductMapping.findById(parseInt(id));
+    if (!mapping) {
+      notFoundError(ctx, '映射关系不存在');
+      return;
+    }
+    
+    const updated = await ProductMapping.update(parseInt(id), {
+      youzanItemId,
+      youzanSkuId,
+      youzanItemName,
+      oiocProductCode,
+      oiocProductName
+    });
+    
+    ctx.body = {
+      success: true,
+      message: '更新成功',
+      data: updated
+    };
+  } catch (error) {
+    logError(error, '更新产品映射');
+    
+    ctx.status = 500;
+    
+    if (isProduction()) {
+      ctx.body = {
+        success: false,
+        message: '更新产品映射失败',
+        code: 'INTERNAL_ERROR',
+      };
+    } else {
+      ctx.body = {
+        success: false,
+        message: error.message || '更新产品映射失败',
+        code: 'INTERNAL_ERROR',
+        detail: error.stack,
+      };
+    }
+  }
+}
+
+async function deleteProductMapping(ctx) {
+  const { id } = ctx.params;
+  
+  try {
+    const mapping = await ProductMapping.findById(parseInt(id));
+    if (!mapping) {
+      notFoundError(ctx, '映射关系不存在');
+      return;
+    }
+    
+    await ProductMapping.remove(parseInt(id));
+    
+    ctx.body = {
+      success: true,
+      message: '删除成功'
+    };
+  } catch (error) {
+    logError(error, '删除产品映射');
+    
+    ctx.status = 500;
+    
+    if (isProduction()) {
+      ctx.body = {
+        success: false,
+        message: '删除产品映射失败',
+        code: 'INTERNAL_ERROR',
+      };
+    } else {
+      ctx.body = {
+        success: false,
+        message: error.message || '删除产品映射失败',
+        code: 'INTERNAL_ERROR',
+        detail: error.stack,
+      };
+    }
+  }
+}
+
+async function searchProductMapping(ctx) {
+  const { skuId, code } = ctx.query;
+  
+  if (!skuId && !code) {
+    paramError(ctx, '请提供 skuId 或 code 参数');
+    return;
+  }
+  
+  try {
+    let mapping = null;
+    
+    if (skuId) {
+      mapping = await ProductMapping.findByYouzanSku(skuId);
+    } else if (code) {
+      mapping = await ProductMapping.findByOiocCode(code);
+    }
+    
+    if (!mapping) {
+      notFoundError(ctx, '未找到映射关系');
+      return;
+    }
+    
+    ctx.body = {
+      success: true,
+      data: mapping
+    };
+  } catch (error) {
+    logError(error, '搜索产品映射');
+    
+    ctx.status = 500;
+    
+    if (isProduction()) {
+      ctx.body = {
+        success: false,
+        message: '搜索产品映射失败',
+        code: 'INTERNAL_ERROR',
+      };
+    } else {
+      ctx.body = {
+        success: false,
+        message: error.message || '搜索产品映射失败',
+        code: 'INTERNAL_ERROR',
+        detail: error.stack,
+      };
+    }
+  }
+}
+
 module.exports = {
   login,
   getUsers,
@@ -326,5 +549,10 @@ module.exports = {
   deleteUser,
   getLogs,
   getStats,
-  queryCode
+  queryCode,
+  getProductMappings,
+  createProductMapping,
+  updateProductMapping,
+  deleteProductMapping,
+  searchProductMapping
 };

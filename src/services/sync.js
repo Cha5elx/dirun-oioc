@@ -1,6 +1,6 @@
 const oiocClient = require('../clients/oioc');
 const youzanClient = require('../clients/youzan');
-const { SyncLog } = require('../models');
+const { SyncLog, ProductMapping } = require('../models');
 
 const PROCESSING_TIMEOUT_MS = 60 * 1000;
 
@@ -128,6 +128,15 @@ class SyncService {
       await this.youzanClient.addStock(itemId, skuId || '', quantity);
       console.log(`✅ 有赞库存已增加 ${quantity} 件`);
       
+      if (productId && itemId) {
+        console.log('📝 保存产品映射关系...');
+        await this.saveProductMapping({
+          youzanItemId: itemId,
+          youzanSkuId: skuId || '',
+          oiocProductCode: productId,
+        });
+      }
+      
       await this.logSync('inbound', inboundData, 'success', null, idempotencyKey);
       
       console.log('🎉 入库流程完成\n');
@@ -201,6 +210,24 @@ class SyncService {
       console.log('📦 订单商品数量:', items.length);
       console.log('📍 收货地址:', address.province, address.city, address.district);
       
+      const detailList = [];
+      for (const item of items) {
+        const mapping = await this.getProductMapping({ youzanItemId: item.item_id });
+        if (mapping) {
+          detailList.push({
+            productID: mapping.oiocProductCode,
+            expectedQty: item.num,
+          });
+          console.log(`📋 商品映射: 有赞 ${item.item_id} -> 第三方 ${mapping.oiocProductCode}`);
+        } else {
+          console.warn(`⚠️  未找到商品映射: 有赞 ${item.item_id}，使用原始ID`);
+          detailList.push({
+            productID: item.item_id,
+            expectedQty: item.num,
+          });
+        }
+      }
+      
       console.log('🔐 登录第三方系统...');
       const loginResult = await this.oiocClient.login();
       
@@ -213,10 +240,7 @@ class SyncService {
       const outboundOrder = await this.oiocClient.createOutboundOrder({
         orderNumber: orderId,
         receiverID: trade.receiver_mobile || '',
-        detailList: items.map(item => ({
-          productID: item.item_id,
-          expectedQty: item.num,
-        })),
+        detailList: detailList,
       });
       console.log('✅ 出库单创建成功:', outboundOrder);
       
@@ -280,11 +304,30 @@ class SyncService {
       
       console.log('📊 扣减有赞库存...');
       const quantity = codes.length;
-      if (itemId) {
-        await this.youzanClient.subtractStock(itemId, skuId || '', quantity);
+      
+      let targetItemId = itemId;
+      let targetSkuId = skuId;
+      
+      if (!targetItemId && codes.length > 0) {
+        const firstCode = codes[0];
+        const productCode = firstCode.productCode || firstCode.productId;
+        if (productCode) {
+          const mapping = await this.getProductMapping({ oiocProductCode: productCode });
+          if (mapping) {
+            targetItemId = mapping.youzanItemId;
+            targetSkuId = mapping.youzanSkuId;
+            console.log(`📋 通过映射找到有赞商品: 第三方 ${productCode} -> 有赞 ${targetItemId}`);
+          } else {
+            console.warn(`⚠️  未找到产品映射: 第三方产品编码 ${productCode}`);
+          }
+        }
+      }
+      
+      if (targetItemId) {
+        await this.youzanClient.subtractStock(targetItemId, targetSkuId || '', quantity);
         console.log(`✅ 有赞库存已扣减 ${quantity} 件`);
       } else {
-        console.log('⚠️  未提供itemId，跳过库存扣减');
+        console.log('⚠️  未找到itemId，跳过库存扣减');
       }
       
       console.log('🚚 有赞订单发货...');
@@ -427,11 +470,30 @@ class SyncService {
       
       console.log('📊 恢复有赞库存...');
       const quantity = codes.length;
-      if (itemId) {
-        await this.youzanClient.addStock(itemId, skuId || '', quantity);
+      
+      let targetItemId = itemId;
+      let targetSkuId = skuId;
+      
+      if (!targetItemId && codes.length > 0) {
+        const firstCode = codes[0];
+        const productCode = firstCode.productCode || firstCode.productId;
+        if (productCode) {
+          const mapping = await this.getProductMapping({ oiocProductCode: productCode });
+          if (mapping) {
+            targetItemId = mapping.youzanItemId;
+            targetSkuId = mapping.youzanSkuId;
+            console.log(`📋 通过映射找到有赞商品: 第三方 ${productCode} -> 有赞 ${targetItemId}`);
+          } else {
+            console.warn(`⚠️  未找到产品映射: 第三方产品编码 ${productCode}`);
+          }
+        }
+      }
+      
+      if (targetItemId) {
+        await this.youzanClient.addStock(targetItemId, targetSkuId || '', quantity);
         console.log(`✅ 有赞库存已恢复 ${quantity} 件`);
       } else {
-        console.log('⚠️  未提供itemId，跳过库存恢复');
+        console.log('⚠️  未找到itemId，跳过库存恢复');
       }
       
       await this.logSync('return_complete', returnData, 'success', null, idempotencyKey);
@@ -454,14 +516,37 @@ class SyncService {
     }
   }
 
-  async getProductMapping(productId) {
-    console.log('⚠️  getProductMapping 方法待实现，请配置产品映射关系');
-    return null;
+  async getProductMapping(options) {
+    try {
+      if (options.youzanSkuId) {
+        return await ProductMapping.findByYouzanSku(options.youzanSkuId);
+      }
+      if (options.youzanItemId) {
+        return await ProductMapping.findByYouzanItem(options.youzanItemId);
+      }
+      if (options.oiocProductCode) {
+        return await ProductMapping.findByOiocCode(options.oiocProductCode);
+      }
+      console.warn('⚠️  getProductMapping: 缺少查询参数');
+      return null;
+    } catch (error) {
+      console.error('查询产品映射失败:', error.message);
+      return null;
+    }
   }
 
-  async saveProductMapping(productId, itemId, skuId) {
-    console.log('⚠️  saveProductMapping 方法待实现，请配置产品映射关系');
-    return true;
+  async saveProductMapping(mappingData) {
+    try {
+      const mapping = await ProductMapping.upsertByYouzanSku(mappingData);
+      console.log('✅ 产品映射保存成功:', {
+        youzanSkuId: mapping.youzanSkuId,
+        oiocProductCode: mapping.oiocProductCode
+      });
+      return mapping;
+    } catch (error) {
+      console.error('保存产品映射失败:', error.message);
+      return null;
+    }
   }
 }
 
