@@ -121,19 +121,12 @@ npm install
 # 7. 构建前端
 echo ""
 echo "🏗️  构建前端..."
+mkdir -p public
 cd admin
 npm install
 npm run build
-
-# 复制构建产物到public目录
-if [ -d "dist" ]; then
-    echo "复制前端构建产物..."
-    cp -r dist/* ../public/
-else
-    echo "⚠️  前端构建失败，请检查"
-fi
-
 cd ..
+echo "✅ 前端构建完成（Vite 直接输出到 public/ 目录）"
 
 # 8. 配置环境变量
 echo ""

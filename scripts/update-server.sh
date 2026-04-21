@@ -93,9 +93,8 @@ if [ "$rebuild_frontend" = "y" ]; then
     cd admin
     npm install
     npm run build
-    cp -r dist/* ../public/
     cd ..
-    echo "✅ 前端构建完成"
+    echo "✅ 前端构建完成（Vite 直接输出到 public/ 目录）"
 fi
 
 # 8. 检查环境变量
