@@ -25,7 +25,7 @@ async function create(userData) {
   const user = await UserModel.create({
     username: userData.username,
     password: hashedPassword,
-    role: userData.role || 'user',
+    role: userData.role || 'operator',
     createdAt: new Date(),
     lastLoginAt: null
   });

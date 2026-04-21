@@ -1,5 +1,5 @@
 const { User, SyncLog, ProductMapping } = require('../models');
-const { generateToken } = require('../middleware/auth');
+const { generateToken, isAdmin, hasRole, ROLE_HIERARCHY } = require('../middleware/auth');
 const oiocClient = require('../clients/oioc');
 const { isProduction, logError, paramError, authError, notFoundError } = require('../utils/response');
 const { runCleanup, getCleanupStats, formatBytes } = require('../services/cleanup');
@@ -26,7 +26,7 @@ async function login(ctx) {
       user = await User.create({
         username: username,
         password: 'oioc_user',
-        role: 'user'
+        role: 'operator'
       });
     }
     
@@ -89,6 +89,14 @@ async function createUser(ctx) {
     return;
   }
   
+  const validRoles = ['admin', 'operator', 'viewer'];
+  const userRole = role || 'operator';
+  
+  if (!validRoles.includes(userRole)) {
+    paramError(ctx, '无效的角色类型，有效值为: admin, operator, viewer');
+    return;
+  }
+  
   try {
     const existing = await User.findByUsername(username);
     if (existing) {
@@ -99,7 +107,7 @@ async function createUser(ctx) {
     const user = await User.create({
       username,
       password,
-      role: role || 'user'
+      role: userRole
     });
     
     ctx.body = {
@@ -133,10 +141,27 @@ async function updateUser(ctx) {
   const { id } = ctx.params;
   const { role } = ctx.request.body;
   
+  const validRoles = ['admin', 'operator', 'viewer'];
+  
+  if (!role) {
+    paramError(ctx, '角色不能为空');
+    return;
+  }
+  
+  if (!validRoles.includes(role)) {
+    paramError(ctx, '无效的角色类型，有效值为: admin, operator, viewer');
+    return;
+  }
+  
   try {
     const user = await User.findById(parseInt(id));
     if (!user) {
       notFoundError(ctx, '用户不存在');
+      return;
+    }
+    
+    if (parseInt(id) === 1 && role !== 'admin') {
+      paramError(ctx, '不能修改默认管理员的角色');
       return;
     }
     
