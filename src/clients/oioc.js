@@ -14,6 +14,7 @@ class OiocClient {
     this.syskey = 'DIRUN';
     this.isProduction = config.server.env === 'production';
     this.loginPromise = null;
+    this.loginPromises = new Map();
     this.loginRetryCount = 0;
     this.maxLoginRetries = 3;
     this.loginRetryDelay = 2000;
@@ -30,9 +31,21 @@ class OiocClient {
       (axiosConfig) => {
         axiosConfig.headers['syskey'] = this.syskey;
         
-        if (this.token) {
-          axiosConfig.headers['token'] = this.token;
+        const username = axiosConfig._username;
+        let tokenToUse = this.token;
+        
+        if (username) {
+          const userTokenInfo = this.userTokens.get(username);
+          if (userTokenInfo && userTokenInfo.token) {
+            tokenToUse = userTokenInfo.token;
+          }
         }
+        
+        if (tokenToUse) {
+          axiosConfig.headers['token'] = tokenToUse;
+        }
+        
+        delete axiosConfig._username;
         
         axiosConfig.metadata = { startTime: Date.now() };
         
@@ -148,15 +161,31 @@ class OiocClient {
 
   /**
    * 使用自定义账号密码登录（用于管理后台登录验证）
+   * 不修改全局 this.token，Token 存储到 userTokens 中
    * @param {string} account - 账号
    * @param {string} password - 密码
    * @returns {Promise<object>} 登录结果，包含token
    */
   async loginWithCredentials(account, password) {
+    if (this.loginPromises.has(account)) {
+      return this.loginPromises.get(account);
+    }
+    
+    const loginPromise = this._doLoginWithCredentials(account, password);
+    this.loginPromises.set(account, loginPromise);
+    
+    try {
+      const result = await loginPromise;
+      return result;
+    } finally {
+      this.loginPromises.delete(account);
+    }
+  }
+  
+  async _doLoginWithCredentials(account, password) {
     try {
       const cachedToken = this.userTokens.get(account);
       if (cachedToken && cachedToken.expiry > Date.now()) {
-        this.token = cachedToken.token;
         console.log(`✅ 使用缓存的Token: ${account}`);
         return { token: cachedToken.token };
       }
@@ -168,34 +197,54 @@ class OiocClient {
       });
       
       if (response.data && response.data.data && response.data.data.token) {
-        this.token = response.data.data.token;
         this.userTokens.set(account, {
           token: response.data.data.token,
           expiry: Date.now() + (23 * 60 * 60 * 1000)
         });
-        console.log(`✅ 用户 ${account} 登录成功`);
+        console.log(`✅ 用户 ${account} 登录成功，Token已缓存`);
         return response.data.data;
       } else {
         throw new Error('登录失败：未返回token');
       }
     } catch (error) {
-      console.error('登录失败:', error.message);
+      console.error(`用户 ${account} 登录失败:`, error.message);
       throw error;
     }
   }
 
   /**
    * 确保已登录（如果没有token则自动登录）
+   * @param {string} username - 用户名（可选），不传则使用系统默认Token
+   * @returns {Promise<string|null>} 返回用户名（用于后续请求）
    */
-  async ensureLogin() {
+  async ensureLogin(username = null) {
     const now = Date.now();
     const oneHour = 60 * 60 * 1000;
+    
+    if (username) {
+      const userTokenInfo = this.userTokens.get(username);
+      if (!userTokenInfo || userTokenInfo.expiry <= now - oneHour) {
+        const reason = !userTokenInfo ? '用户Token不存在' : '用户Token即将过期';
+        console.log(`⚠️  ${reason}，用户 ${username} 需要重新登录（请调用 loginWithCredentials）`);
+        throw new Error(`用户 ${username} Token无效或已过期，请重新登录`);
+      }
+      return username;
+    }
     
     if (!this.token || (this.tokenExpiry && now >= this.tokenExpiry - oneHour)) {
       const reason = !this.token ? 'Token不存在' : 'Token即将过期';
       console.log(`⚠️  ${reason}，自动登录...`);
       await this.login();
     }
+    return null;
+  }
+
+  /**
+   * 获取用户名（向后兼容）
+   * @returns {string|null} 配置文件中的用户名
+   */
+  getUsername() {
+    return config.oioc.username;
   }
 
   /**
@@ -206,17 +255,20 @@ class OiocClient {
    * @param {string} productData.productCode - 产品编号（可选）
    * @param {string} productData.productName - 产品名称（唯一）（必需）
    * @param {string} productData.standard - 产品规格（可选）
+   * @param {string} username - 用户名（可选）
    * @returns {Promise<object>} 创建结果
    */
-  async createProduct(productData) {
+  async createProduct(productData, username = null) {
     try {
-      await this.ensureLogin();
+      await this.ensureLogin(username);
       
       const response = await this.axiosInstance.post('/products/', {
         productID: productData.productID,
         productCode: productData.productCode,
         productName: productData.productName,
         standard: productData.standard,
+      }, {
+        _username: username
       });
       
       return response.data;
@@ -236,11 +288,12 @@ class OiocClient {
    * @param {string} params.standard - 产品规格（可选）
    * @param {string} params.limit - 获取N个数据（默认：10）（可选）
    * @param {string} params.skip - 跳过N个数据（默认：0）（可选）
+   * @param {string} username - 用户名（可选）
    * @returns {Promise<object>} 产品列表
    */
-  async getProduct(params = {}) {
+  async getProduct(params = {}, username = null) {
     try {
-      await this.ensureLogin();
+      await this.ensureLogin(username);
       
       const queryParams = {};
       if (params.productID) queryParams.productID = params.productID;
@@ -252,6 +305,7 @@ class OiocClient {
       
       const response = await this.axiosInstance.get('/products/', {
         params: queryParams,
+        _username: username
       });
       
       return response.data;
@@ -270,11 +324,12 @@ class OiocClient {
    * @param {string} agentData.password - 密码（必需）
    * @param {number} agentData.userTypeNumber - 用户类型编号（固定传30）（必需）
    * @param {string} agentData.parentID - 上级ID（固定传'admin'）（必需）
+   * @param {string} username - 用户名（可选）
    * @returns {Promise<object>} 创建结果
    */
-  async createAgent(agentData) {
+  async createAgent(agentData, username = null) {
     try {
-      await this.ensureLogin();
+      await this.ensureLogin(username);
       
       const response = await this.axiosInstance.post('/users/', {
         userID: agentData.userID,
@@ -282,6 +337,8 @@ class OiocClient {
         password: agentData.password || '888333',
         userTypeNumber: agentData.userTypeNumber || 30,
         parentID: agentData.parentID || 'admin',
+      }, {
+        _username: username
       });
       
       return response.data;
@@ -300,11 +357,12 @@ class OiocClient {
    * @param {string} params.userName - 用户名（可选）
    * @param {string} params.limit - 获取N个数据（默认：10）（可选）
    * @param {string} params.skip - 跳过N个数据（默认：0）（可选）
+   * @param {string} username - 用户名（可选）
    * @returns {Promise<object>} 代理商列表
    */
-  async getAgent(params = {}) {
+  async getAgent(params = {}, username = null) {
     try {
-      await this.ensureLogin();
+      await this.ensureLogin(username);
       
       const queryParams = {};
       if (params.userID) queryParams.userID = params.userID;
@@ -315,6 +373,7 @@ class OiocClient {
       
       const response = await this.axiosInstance.get('/users/', {
         params: queryParams,
+        _username: username
       });
       
       return response.data;
@@ -338,11 +397,12 @@ class OiocClient {
    * @param {array} orderData.detailList       - 商品明细列表（必需）
    * @param {string} orderData.detailList[0].productID - 产品ID（必需）
    * @param {number} orderData.detailList[0].expectedQty - 开单数量（必需）
+   * @param {string} username - 用户名（可选）
    * @returns {Promise<object>} 创建结果
    */
-  async createInboundOrder(orderData) {
+  async createInboundOrder(orderData, username = null) {
     try {
-      await this.ensureLogin();
+      await this.ensureLogin(username);
       
       const response = await this.axiosInstance.post('/orders/order-and-detail/', {
         shipperID: orderData.shipperID || '',
@@ -353,6 +413,8 @@ class OiocClient {
         receiverID: orderData.receiverID,
         orderInType: orderData.orderInType || 20,
         detailList: orderData.detailList,
+      }, {
+        _username: username
       });
       
       return response.data;
@@ -376,11 +438,12 @@ class OiocClient {
    * @param {array} orderData.detailList       - 商品明细列表（必需）
    * @param {string} orderData.detailList[0].productID - 产品ID（必需）
    * @param {number} orderData.detailList[0].expectedQty - 开单数量（必需）
+   * @param {string} username - 用户名（可选）
    * @returns {Promise<object>} 创建结果
    */
-  async createOutboundOrder(orderData) {
+  async createOutboundOrder(orderData, username = null) {
     try {
-      await this.ensureLogin();
+      await this.ensureLogin(username);
       
       const response = await this.axiosInstance.post('/orders/order-and-detail/', {
         shipperID: orderData.shipperID || '',
@@ -391,6 +454,8 @@ class OiocClient {
         orderInType: orderData.orderInType || 0,
         receiverID: orderData.receiverID,
         detailList: orderData.detailList,
+      }, {
+        _username: username
       });
       
       return response.data;
@@ -414,11 +479,12 @@ class OiocClient {
    * @param {array} orderData.detailList       - 商品明细列表（必需）
    * @param {string} orderData.detailList[0].productID - 产品ID（必需）
    * @param {number} orderData.detailList[0].expectedQty - 开单数量（必需）
+   * @param {string} username - 用户名（可选）
    * @returns {Promise<object>} 创建结果
    */
-  async createReturnOrder(orderData) {
+  async createReturnOrder(orderData, username = null) {
     try {
-      await this.ensureLogin();
+      await this.ensureLogin(username);
       
       const response = await this.axiosInstance.post('/orders/order-and-detail/', {
         shipperID: orderData.shipperID || '',
@@ -429,6 +495,8 @@ class OiocClient {
         orderInType: orderData.orderInType || 0,
         receiverID: orderData.receiverID,
         detailList: orderData.detailList,
+      }, {
+        _username: username
       });
       
       return response.data;
@@ -444,13 +512,16 @@ class OiocClient {
    * Header参数：
    * @param {string} syskey - 系统KEY
    * @param {string} token - token
+   * @param {string} username - 用户名（可选）
    * @returns {Promise<object>} 订单条码列表
    */
-  async getOrderCodes(orderID) {
+  async getOrderCodes(orderID, username = null) {
     try {
-      await this.ensureLogin();
+      await this.ensureLogin(username);
       
-      const response = await this.axiosInstance.get(`/barcodes/get_by_order/${orderID}`);
+      const response = await this.axiosInstance.get(`/barcodes/get_by_order/${orderID}`, {
+        _username: username
+      });
       
       return response.data;
     } catch (error) {
@@ -486,12 +557,13 @@ class OiocClient {
    * @param {string} params.limit - 获取N个数据（默认：10）（可选）
    * @param {string} params.skip - 跳过N个数据（默认：0）（可选）
    * Header参数：
-   * Token - token（默认：{{token}}）（可选） 
+   * Token - token（默认：{{token}}）（可选）
+   * @param {string} username - 用户名（可选）
    * @returns {Promise<object>} 入库订单详情
    */
-  async getInboundOrderDetail(params = {}) {
+  async getInboundOrderDetail(params = {}, username = null) {
     try {
-      await this.ensureLogin();
+      await this.ensureLogin(username);
       
       const queryParams = {};
       
@@ -520,6 +592,7 @@ class OiocClient {
       
       const response = await this.axiosInstance.get('/reports/hq/order-in/has-scan', {
         params: queryParams,
+        _username: username
       });
       
       return response.data;
@@ -555,11 +628,12 @@ class OiocClient {
    * @param {string} params.orderTypeNumberList - 出库类型列表, 用于查询流水号快捷出库，示例：22,23
    * @param {string} params.limit - 获取N个数据（默认：10）（可选）
    * @param {string} params.skip - 跳过N个数据（默认：0）（可选）
+   * @param {string} username - 用户名（可选）
    * @returns {Promise<object>} 出库订单详情
    */
-  async getOutboundOrderDetail(params = {}) {
+  async getOutboundOrderDetail(params = {}, username = null) {
     try {
-      await this.ensureLogin();
+      await this.ensureLogin(username);
       
       const queryParams = {};
       
@@ -588,6 +662,7 @@ class OiocClient {
       
       const response = await this.axiosInstance.get('/reports/hq/order-out/has-scan', {
         params: queryParams,
+        _username: username
       });
       
       return response.data;
@@ -622,11 +697,12 @@ class OiocClient {
    * @param {string} params.isStatSum - 0:不统计数据; 1:统计数据（可选）
    * @param {string} params.limit - 获取N个数据（默认：10）（可选）
    * @param {string} params.skip - 跳过N个数据（默认：0）（可选）
+   * @param {string} username - 用户名（可选）
    * @returns {Promise<object>} 退货订单详情
    */
-  async getReturnOrderDetail(params = {}) {
+  async getReturnOrderDetail(params = {}, username = null) {
     try {
-      await this.ensureLogin();
+      await this.ensureLogin(username);
       
       const queryParams = {};
       
@@ -654,6 +730,7 @@ class OiocClient {
       
       const response = await this.axiosInstance.get('/reports/hq/order-return/has-scan', {
         params: queryParams,
+        _username: username
       });
       
       return response.data;
