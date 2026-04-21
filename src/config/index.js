@@ -22,6 +22,15 @@ const config = {
     secret: process.env.JWT_SECRET,
     expiresIn: process.env.JWT_EXPIRES_IN || '24h',
   },
+  security: {
+    corsOrigin: process.env.CORS_ORIGIN || '*',
+    rateLimit: {
+      windowMs: 60 * 1000,
+      max: parseInt(process.env.RATE_LIMIT_MAX) || 100,
+      webhookMax: parseInt(process.env.WEBHOOK_RATE_LIMIT_MAX) || 30,
+    },
+    maxRequestBodySize: process.env.MAX_REQUEST_BODY_SIZE || '1mb',
+  },
 };
 
 module.exports = config;

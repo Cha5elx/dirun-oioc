@@ -1,6 +1,8 @@
 const Koa = require('koa');
 const bodyParser = require('koa-bodyparser');
 const serve = require('koa-static');
+const cors = require('@koa/cors');
+const rateLimit = require('koa-ratelimit');
 const path = require('path');
 const fs = require('fs');
 const config = require('./src/config');
@@ -56,6 +58,55 @@ app.use(async (ctx, next) => {
   }
 });
 
+if (config.security.corsOrigin === '*' && isProduction()) {
+  console.warn('警告: 生产环境下 CORS_ORIGIN 不应设置为 "*"，请配置具体的允许域名');
+}
+
+app.use(cors({
+  origin: config.security.corsOrigin,
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization'],
+}));
+
+const rateLimitStore = new Map();
+
+const globalRateLimit = rateLimit({
+  driver: 'memory',
+  db: rateLimitStore,
+  duration: config.security.rateLimit.windowMs,
+  max: config.security.rateLimit.max,
+  id: (ctx) => ctx.ip,
+  errorMessage: JSON.stringify({
+    success: false,
+    message: '请求过于频繁，请稍后再试',
+    code: 'RATE_LIMIT_EXCEEDED',
+  }),
+  disableHeader: false,
+});
+
+const webhookRateLimitStore = new Map();
+
+const webhookRateLimit = rateLimit({
+  driver: 'memory',
+  db: webhookRateLimitStore,
+  duration: config.security.rateLimit.windowMs,
+  max: config.security.rateLimit.webhookMax,
+  id: (ctx) => ctx.ip,
+  errorMessage: JSON.stringify({
+    success: false,
+    message: 'Webhook 请求过于频繁，请稍后再试',
+    code: 'WEBHOOK_RATE_LIMIT_EXCEEDED',
+  }),
+  disableHeader: false,
+});
+
+app.use(async (ctx, next) => {
+  if (ctx.path.startsWith('/webhook')) {
+    return webhookRateLimit(ctx, next);
+  }
+  return globalRateLimit(ctx, next);
+});
+
 app.use(async (ctx, next) => {
   if (ctx.path.startsWith('/webhook')) {
     const chunks = [];
@@ -74,7 +125,10 @@ app.use(async (ctx, next) => {
   }
 });
 
-app.use(bodyParser());
+app.use(bodyParser({
+  jsonLimit: config.security.maxRequestBodySize,
+  formLimit: config.security.maxRequestBodySize,
+}));
 
 const publicPath = path.join(__dirname, 'public');
 app.use(serve(publicPath));
