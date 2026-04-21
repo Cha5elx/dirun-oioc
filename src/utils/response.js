@@ -1,4 +1,5 @@
 const config = require('../config');
+const logger = require('./logger');
 
 const isProduction = () => config.server.env === 'production';
 
@@ -66,12 +67,11 @@ function notFoundError(ctx, message = '资源不存在') {
 }
 
 function logError(err, context = '') {
-  const timestamp = new Date().toISOString();
-  const prefix = context ? `[${timestamp}] [${context}]` : `[${timestamp}]`;
-  console.error(`${prefix} 错误:`, err.message);
-  if (!isProduction() && err.stack) {
-    console.error(err.stack);
-  }
+  logger.error(`错误: ${err.message}`, {
+    context,
+    stack: err.stack,
+    name: err.name
+  });
 }
 
 module.exports = {

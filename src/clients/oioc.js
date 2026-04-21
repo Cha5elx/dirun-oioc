@@ -4,6 +4,7 @@
  */
 const axios = require('axios');
 const config = require('../config');
+const logger = require('../utils/logger');
 
 class OiocClient {
   constructor() {
@@ -50,15 +51,12 @@ class OiocClient {
         axiosConfig.metadata = { startTime: Date.now() };
         
         if (!this.isProduction) {
-          console.log('\n📤 API请求:');
-          console.log(`   方法: ${axiosConfig.method?.toUpperCase()}`);
-          console.log(`   URL: ${axiosConfig.baseURL}${axiosConfig.url}`);
-          if (axiosConfig.params) {
-            console.log(`   Query参数: ${JSON.stringify(axiosConfig.params, null, 2)}`);
-          }
-          if (axiosConfig.data) {
-            console.log(`   Body数据: ${JSON.stringify(axiosConfig.data, null, 2)}`);
-          }
+          logger.debug('API请求', {
+            method: axiosConfig.method?.toUpperCase(),
+            url: `${axiosConfig.baseURL}${axiosConfig.url}`,
+            params: axiosConfig.params,
+            data: axiosConfig.data
+          });
         }
         
         return axiosConfig;
@@ -73,12 +71,16 @@ class OiocClient {
         const duration = Date.now() - response.config.metadata.startTime;
         
         if (!this.isProduction) {
-          console.log('\n📥 API响应:');
-          console.log(`   状态码: ${response.status}`);
-          console.log(`   URL: ${response.config.url}`);
-          console.log(`   ⏱️  耗时: ${duration}ms`);
+          logger.debug('API响应', {
+            status: response.status,
+            url: response.config.url,
+            duration: `${duration}ms`
+          });
         } else if (duration > 1000) {
-          console.log(`⚠️  慢请求警告: ${response.config.url} 耗时 ${duration}ms`);
+          logger.warn('慢请求警告', {
+            url: response.config.url,
+            duration: `${duration}ms`
+          });
         }
         
         return response;
@@ -87,14 +89,12 @@ class OiocClient {
         const duration = Date.now() - error.config?.metadata?.startTime;
         
         if (!this.isProduction) {
-          console.log('\n📥 API响应错误:');
-          console.log(`   URL: ${error.config?.url}`);
-          if (error.response) {
-            console.log(`   状态码: ${error.response.status}`);
-          } else {
-            console.log(`   错误信息: ${error.message}`);
-          }
-          console.log(`   ⏱️  耗时: ${duration}ms`);
+          logger.debug('API响应错误', {
+            url: error.config?.url,
+            status: error.response?.status,
+            message: error.message,
+            duration: `${duration}ms`
+          });
         }
         return Promise.reject(error);
       }
@@ -103,12 +103,6 @@ class OiocClient {
 
   /**
    * 登录第三方一物一码系统（使用配置文件中的账号）
-   * Header参数：syskey = DIRUN（必需）
-   * Body参数：
-   * @param {string} account - 账号（必需）
-   * @param {string} password - 密码（必需）
-   * @param {string} type - 登录类型（默认PDA）（必需）
-   * @returns {Promise<object>} 登录结果，包含token
    */
   async login() {
     if (this.loginPromise) {
@@ -140,17 +134,17 @@ class OiocClient {
           this.token = response.data.data.token;
           this.tokenExpiry = Date.now() + (23 * 60 * 60 * 1000);
           this.loginRetryCount = 0;
-          console.log('✅ 第三方系统登录成功，Token已保存');
+          logger.info('第三方系统登录成功，Token已保存');
           return response.data.data;
         } else {
           throw new Error('登录失败：未返回token');
         }
       } catch (error) {
         lastError = error;
-        console.error(`登录失败 (尝试 ${attempt}/${this.maxLoginRetries}):`, error.message);
+        logger.error(`登录失败 (尝试 ${attempt}/${this.maxLoginRetries})`, { error: error.message });
         
         if (attempt < this.maxLoginRetries) {
-          console.log(`⏳ ${this.loginRetryDelay / 1000}秒后重试...`);
+          logger.debug(`${this.loginRetryDelay / 1000}秒后重试...`);
           await new Promise(resolve => setTimeout(resolve, this.loginRetryDelay));
         }
       }
@@ -161,10 +155,6 @@ class OiocClient {
 
   /**
    * 使用自定义账号密码登录（用于管理后台登录验证）
-   * 不修改全局 this.token，Token 存储到 userTokens 中
-   * @param {string} account - 账号
-   * @param {string} password - 密码
-   * @returns {Promise<object>} 登录结果，包含token
    */
   async loginWithCredentials(account, password) {
     if (this.loginPromises.has(account)) {
@@ -186,7 +176,7 @@ class OiocClient {
     try {
       const cachedToken = this.userTokens.get(account);
       if (cachedToken && cachedToken.expiry > Date.now()) {
-        console.log(`✅ 使用缓存的Token: ${account}`);
+        logger.debug(`使用缓存的Token: ${account}`);
         return { token: cachedToken.token };
       }
       
@@ -201,21 +191,19 @@ class OiocClient {
           token: response.data.data.token,
           expiry: Date.now() + (23 * 60 * 60 * 1000)
         });
-        console.log(`✅ 用户 ${account} 登录成功，Token已缓存`);
+        logger.info(`用户 ${account} 登录成功，Token已缓存`);
         return response.data.data;
       } else {
         throw new Error('登录失败：未返回token');
       }
     } catch (error) {
-      console.error(`用户 ${account} 登录失败:`, error.message);
+      logger.error(`用户 ${account} 登录失败`, { error: error.message });
       throw error;
     }
   }
 
   /**
-   * 确保已登录（如果没有token则自动登录）
-   * @param {string} username - 用户名（可选），不传则使用系统默认Token
-   * @returns {Promise<string|null>} 返回用户名（用于后续请求）
+   * 确保已登录
    */
   async ensureLogin(username = null) {
     const now = Date.now();
@@ -225,7 +213,7 @@ class OiocClient {
       const userTokenInfo = this.userTokens.get(username);
       if (!userTokenInfo || userTokenInfo.expiry <= now - oneHour) {
         const reason = !userTokenInfo ? '用户Token不存在' : '用户Token即将过期';
-        console.log(`⚠️  ${reason}，用户 ${username} 需要重新登录（请调用 loginWithCredentials）`);
+        logger.warn(`${reason}，用户 ${username} 需要重新登录`);
         throw new Error(`用户 ${username} Token无效或已过期，请重新登录`);
       }
       return username;
@@ -233,15 +221,14 @@ class OiocClient {
     
     if (!this.token || (this.tokenExpiry && now >= this.tokenExpiry - oneHour)) {
       const reason = !this.token ? 'Token不存在' : 'Token即将过期';
-      console.log(`⚠️  ${reason}，自动登录...`);
+      logger.debug(`${reason}，自动登录...`);
       await this.login();
     }
     return null;
   }
 
   /**
-   * 获取用户名（向后兼容）
-   * @returns {string|null} 配置文件中的用户名
+   * 获取用户名
    */
   getUsername() {
     return config.oioc.username;
@@ -249,14 +236,6 @@ class OiocClient {
 
   /**
    * 创建产品
-   * Body参数：
-   * @param {object} productData - 产品数据
-   * @param {string} productData.productID - 产品ID（唯一）（必需）
-   * @param {string} productData.productCode - 产品编号（可选）
-   * @param {string} productData.productName - 产品名称（唯一）（必需）
-   * @param {string} productData.standard - 产品规格（可选）
-   * @param {string} username - 用户名（可选）
-   * @returns {Promise<object>} 创建结果
    */
   async createProduct(productData, username = null) {
     try {
@@ -273,23 +252,13 @@ class OiocClient {
       
       return response.data;
     } catch (error) {
-      console.error('创建产品失败:', error.message);
+      logger.error('创建产品失败', { error: error.message, productData });
       throw error;
     }
   }
 
   /**
    * 查询产品
-   * Query参数：
-   * @param {object} params - 查询参数（可选）
-   * @param {string} params.productID - 产品ID（唯一）（可选）
-   * @param {string} params.productName - 产品名称（可选）
-   * @param {string} params.productCode - 产品编号（唯一）（可选）
-   * @param {string} params.standard - 产品规格（可选）
-   * @param {string} params.limit - 获取N个数据（默认：10）（可选）
-   * @param {string} params.skip - 跳过N个数据（默认：0）（可选）
-   * @param {string} username - 用户名（可选）
-   * @returns {Promise<object>} 产品列表
    */
   async getProduct(params = {}, username = null) {
     try {
@@ -310,22 +279,13 @@ class OiocClient {
       
       return response.data;
     } catch (error) {
-      console.error('查询产品失败:', error.message);
+      logger.error('查询产品失败', { error: error.message, params });
       throw error;
     }
   }
 
   /**
    * 创建代理商
-   * Body参数：
-   * @param {object} agentData - 代理商数据
-   * @param {string} agentData.userID - 代理商ID（必需）
-   * @param {string} agentData.account - 账号（唯一）（必需）
-   * @param {string} agentData.password - 密码（必需）
-   * @param {number} agentData.userTypeNumber - 用户类型编号（固定传30）（必需）
-   * @param {string} agentData.parentID - 上级ID（固定传'admin'）（必需）
-   * @param {string} username - 用户名（可选）
-   * @returns {Promise<object>} 创建结果
    */
   async createAgent(agentData, username = null) {
     try {
@@ -343,22 +303,13 @@ class OiocClient {
       
       return response.data;
     } catch (error) {
-      console.error('创建代理商失败:', error.message);
+      logger.error('创建代理商失败', { error: error.message, agentData });
       throw error;
     }
   }
 
   /**
    * 查询代理商
-   * Query参数：
-   * @param {object} params - 查询参数（可选）
-   * @param {string} params.userID - 代理商ID（可选）
-   * @param {string} params.account - 账号（可选）
-   * @param {string} params.userName - 用户名（可选）
-   * @param {string} params.limit - 获取N个数据（默认：10）（可选）
-   * @param {string} params.skip - 跳过N个数据（默认：0）（可选）
-   * @param {string} username - 用户名（可选）
-   * @returns {Promise<object>} 代理商列表
    */
   async getAgent(params = {}, username = null) {
     try {
@@ -378,27 +329,13 @@ class OiocClient {
       
       return response.data;
     } catch (error) {
-      console.error('查询代理商失败:', error.message);
+      logger.error('查询代理商失败', { error: error.message, params });
       throw error;
     }
   }
 
   /**
    * 创建入库单
-   * Body参数：
-   * @param {object} orderData - 入库单数据
-   * @param {string} orderData.shipperID       - 发货人ID（入库传空字符）（必需）
-   * @param {string} orderData.orderNumber     - 订单号（所有订单唯一）（必需）
-   * @param {string} orderData.orderDesc       - 订单备注（可选）
-   * @param {string} orderData.orderSource     - 订单来源（默认: 'API'）（必需）
-   * @param {number} orderData.orderTypeNumber - 订单类型编号（入库: 10）（必需）
-   * @param {string} orderData.receiverID      - 收货人ID（入库：仓库ID）（必需）
-   * @param {number} orderData.orderInType     - 入库类型（入库: 20）（必需）
-   * @param {array} orderData.detailList       - 商品明细列表（必需）
-   * @param {string} orderData.detailList[0].productID - 产品ID（必需）
-   * @param {number} orderData.detailList[0].expectedQty - 开单数量（必需）
-   * @param {string} username - 用户名（可选）
-   * @returns {Promise<object>} 创建结果
    */
   async createInboundOrder(orderData, username = null) {
     try {
@@ -419,27 +356,13 @@ class OiocClient {
       
       return response.data;
     } catch (error) {
-      console.error('创建入库单失败:', error.message);
+      logger.error('创建入库单失败', { error: error.message, orderNumber: orderData.orderNumber });
       throw error;
     }
   }
 
   /**
    * 创建出库单
-   * Body参数：
-   * @param {object} orderData - 出库单数据
-   * @param {string} orderData.shipperID       - 发货人ID（出库传仓库id）（必需）
-   * @param {string} orderData.orderNumber     - 订单号（所有订单唯一）（必需）
-   * @param {string} orderData.orderDesc       - 订单备注（可选）
-   * @param {string} orderData.orderSource     - 订单来源（默认: 'API'）（必需）
-   * @param {number} orderData.orderTypeNumber - 订单类型编号（出库: 20）（必需）
-   * @param {string} orderData.receiverID      - 收货人ID（出库：代理ID）（必需）
-   * @param {number} orderData.orderInType     - 出库类型（出库: 0）（必需）
-   * @param {array} orderData.detailList       - 商品明细列表（必需）
-   * @param {string} orderData.detailList[0].productID - 产品ID（必需）
-   * @param {number} orderData.detailList[0].expectedQty - 开单数量（必需）
-   * @param {string} username - 用户名（可选）
-   * @returns {Promise<object>} 创建结果
    */
   async createOutboundOrder(orderData, username = null) {
     try {
@@ -460,27 +383,13 @@ class OiocClient {
       
       return response.data;
     } catch (error) {
-      console.error('创建出库单失败:', error.message);
+      logger.error('创建出库单失败', { error: error.message, orderNumber: orderData.orderNumber });
       throw error;
     }
   }
 
   /**
    * 创建退货单
-   * Body参数：
-   * @param {object} orderData - 退货单数据
-   * @param {string} orderData.shipperID       - 发货人ID（退货传退货代理id）（必需）
-   * @param {string} orderData.orderNumber     - 订单号（所有订单唯一）（必需）
-   * @param {string} orderData.orderDesc       - 订单备注（可选）
-   * @param {string} orderData.orderSource     - 订单来源（默认: 'API'）（必需）
-   * @param {number} orderData.orderTypeNumber - 订单类型编号（退货: 30）（必需）
-   * @param {string} orderData.receiverID      - 收货人ID（退货：仓库ID）（必需）
-   * @param {number} orderData.orderInType     - 退货类型（退货: 0）（必需）    
-   * @param {array} orderData.detailList       - 商品明细列表（必需）
-   * @param {string} orderData.detailList[0].productID - 产品ID（必需）
-   * @param {number} orderData.detailList[0].expectedQty - 开单数量（必需）
-   * @param {string} username - 用户名（可选）
-   * @returns {Promise<object>} 创建结果
    */
   async createReturnOrder(orderData, username = null) {
     try {
@@ -501,19 +410,13 @@ class OiocClient {
       
       return response.data;
     } catch (error) {
-      console.error('创建退货单失败:', error.message);
+      logger.error('创建退货单失败', { error: error.message, orderNumber: orderData.orderNumber });
       throw error;
     }
   }
 
   /**
    * 查询订单条码
-   * Path参数：orderID - String 订单ID（必需）
-   * Header参数：
-   * @param {string} syskey - 系统KEY
-   * @param {string} token - token
-   * @param {string} username - 用户名（可选）
-   * @returns {Promise<object>} 订单条码列表
    */
   async getOrderCodes(orderID, username = null) {
     try {
@@ -525,41 +428,13 @@ class OiocClient {
       
       return response.data;
     } catch (error) {
-      console.error('查询订单条码失败:', error.message);
+      logger.error('查询订单条码失败', { error: error.message, orderID });
       throw error;
     }
   }
 
   /**
    * 查询入库订单详情
-   * Query参数：
-   * @param {object} params - 查询参数（可选）
-   * @param {string} params.orderNumber - 订单号（模糊查询）（可选）
-   * @param {string} params.orderStateNumber - 订单状态（可选）
-   * @param {string} params.receiverID - 入库仓库ID(总部人员可以单个查询, 仓库人员不需要传)（可选）
-   * @param {string} params.receiverUsername - 仓库名称(模糊查询)(总部人员可以单个查询, 仓库人员不需要传)（可选）
-   * @param {string} params.productID - 产品ID（可选）
-   * @param {string} params.productName - 产品名称（可选）
-   * @param {string} params.batchID - 批次ID（可选）
-   * @param {string} params.batchName - 批次名称（可选）
-   * @param {string} params.createdStartTime - 创建时间-开始（可选）
-   * @param {string} params.createdEndTime - 创建时间-结束（可选）
-   * @param {string} params.finishStartTime - 完成时间-开始（可选）
-   * @param {string} params.finishEndTime - 完成时间-结束（可选）
-   * @param {string} params.isAccurate - 是否开启精准查询(0: 模糊(默认), 1: 精准)（可选）
-   * @param {string} params.isScan - 是否需要扫描, 0:无需, 1:需要（可选）
-   * @param {string} params.isStatSum - 是否统计明细的数量(0:不统计, 1:统计)（可选）
-   * @param {string} params.orderInType - 入库类型（可选）
-   * @param {string} params.orderInTypeList - 入库类型列表（可选）示例：41,42
-   * @param {string} params.orderDetailDesc - 明细备注（可选）
-   * @param {number} params.showMiddleCodeCount - 是否计算箱规数量（可选）
-   * @param {number} params.returnSerialTag - 是否返回条码（可选）
-   * @param {string} params.limit - 获取N个数据（默认：10）（可选）
-   * @param {string} params.skip - 跳过N个数据（默认：0）（可选）
-   * Header参数：
-   * Token - token（默认：{{token}}）（可选）
-   * @param {string} username - 用户名（可选）
-   * @returns {Promise<object>} 入库订单详情
    */
   async getInboundOrderDetail(params = {}, username = null) {
     try {
@@ -597,39 +472,13 @@ class OiocClient {
       
       return response.data;
     } catch (error) {
-      console.error('查询入库订单详情失败:', error.message);
+      logger.error('查询入库订单详情失败', { error: error.message, params });
       throw error;
     }
   }
 
   /**
    * 查询出库订单详情
-   * Query参数：
-   * @param {object} params - 查询参数
-   * @param {string} params.userID - 当前用户ID(当前人为仓库的, 仅查询自己的数据)（必需）
-   * @param {string} params.orderNumber - 订单号（模糊查询）（可选）
-   * @param {string} params.orderStateNumber - 订单状态（可选）
-   * @param {string} params.receiverID - 接收人ID（可选）
-   * @param {string} params.receiverUsername - 收货人名称（可选）
-   * @param {string} params.productID - 产品ID（可选）
-   * @param {string} params.productName - 产品名称（可选）
-   * @param {string} params.batchID - 批次ID（可选）
-   * @param {string} params.batchName - 批次名称（可选）
-   * @param {string} params.createdStartTime - 创建时间-开始（可选）
-   * @param {string} params.createdEndTime - 创建时间-结束（可选）
-   * @param {string} params.finishStartTime - 完成时间-开始（可选）
-   * @param {string} params.finishEndTime - 完成时间-结束（可选）
-   * @param {string} params.shipperID - 发货人ID(总部人员可以单个查询, 仓库人员不需要传))（可选）
-   * @param {string} params.shipperName - 发货人名称（示例：成品）（可选）
-   * @param {string} params.orderTypeNumber - 订单类型，出库需填, 20:普通出库, 21:快捷出库, 29:所有出库（必需）
-   * @param {string} params.isAccurate - 是否开启精准查询(0: 模糊(默认), 1: 精准)（可选）
-   * @param {string} params.isScan - 是否需要扫描, 0:无需, 1:需要（可选）
-   * @param {string} params.isStatSum - 是否统计明细的数量(0:不统计, 1:统计)（可选）
-   * @param {string} params.orderTypeNumberList - 出库类型列表, 用于查询流水号快捷出库，示例：22,23
-   * @param {string} params.limit - 获取N个数据（默认：10）（可选）
-   * @param {string} params.skip - 跳过N个数据（默认：0）（可选）
-   * @param {string} username - 用户名（可选）
-   * @returns {Promise<object>} 出库订单详情
    */
   async getOutboundOrderDetail(params = {}, username = null) {
     try {
@@ -667,38 +516,13 @@ class OiocClient {
       
       return response.data;
     } catch (error) {
-      console.error('查询出库订单详情失败:', error.message);
+      logger.error('查询出库订单详情失败', { error: error.message, params });
       throw error;
     }
   }
 
   /**
    * 查询退货订单详情
-   * Query参数：
-   * @param {object} params - 查询参数
-   * @param {string} params.userID - 当前用户ID（必需）
-   * @param {string} params.orderNumber - 订单号（模糊查询）（可选）
-   * @param {string} params.orderStateNumber - 订单状态（可选）
-   * @param {string} params.receiverID - 收货人ID（可选）
-   * @param {string} params.receiverUsername -收货人名称（可选）
-   * @param {string} params.productID - 产品ID（可选）
-   * @param {string} params.productName - 产品名称（可选）
-   * @param {string} params.batchID - 批次ID（可选）
-   * @param {string} params.batchName - 批次名称（可选）
-   * @param {string} params.createdStartTime - 创建时间-开始（可选）
-   * @param {string} params.createdEndTime - 创建时间-结束（可选）
-   * @param {string} params.finishStartTime - 完成时间-开始（可选）
-   * @param {string} params.finishEndTime - 完成时间-结束（可选）
-   * @param {string} params.shipperID - 退货人ID（可选）
-   * @param {string} params.shipperName - 退货人名称（可选）
-   * @param {string} params.isAccurate - 是否开启精准查询(0: 模糊(默认))（可选）
-   * @param {string} params.createdUserID - 创建人ID（可选）
-   * @param {string} params.createdUserName - 创建人名称[支持精准/模糊查询]（可选）
-   * @param {string} params.isStatSum - 0:不统计数据; 1:统计数据（可选）
-   * @param {string} params.limit - 获取N个数据（默认：10）（可选）
-   * @param {string} params.skip - 跳过N个数据（默认：0）（可选）
-   * @param {string} username - 用户名（可选）
-   * @returns {Promise<object>} 退货订单详情
    */
   async getReturnOrderDetail(params = {}, username = null) {
     try {
@@ -735,7 +559,7 @@ class OiocClient {
       
       return response.data;
     } catch (error) {
-      console.error('查询退货订单详情失败:', error.message);
+      logger.error('查询退货订单详情失败', { error: error.message, params });
       throw error;
     }
   }

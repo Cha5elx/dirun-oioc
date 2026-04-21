@@ -1,12 +1,13 @@
 const syncService = require('../services/sync');
 const { isProduction, logError } = require('../utils/response');
+const logger = require('../utils/logger');
 
 class WebhookController {
   async handleYouzanWebhook(ctx) {
     try {
       const { type, data } = ctx.request.body;
       
-      console.log('收到有赞Webhook:', type);
+      logger.info('收到有赞Webhook', { type });
       
       let result;
       
@@ -58,7 +59,7 @@ class WebhookController {
     try {
       const { type, data } = ctx.request.body;
       
-      console.log('收到OIOC Webhook:', type);
+      logger.info('收到OIOC Webhook', { type });
       
       let result;
       

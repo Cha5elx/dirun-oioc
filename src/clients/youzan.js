@@ -4,6 +4,7 @@
  */
 const youzanyun = require('youzanyun-sdk');
 const config = require('../config');
+const logger = require('../utils/logger');
 
 class YouzanClient {
   constructor() {
@@ -24,11 +25,10 @@ class YouzanClient {
 
   /**
    * 获取有赞access_token
-   * @returns {Promise<string>} access_token
    */
   async getToken() {
     if (this.dryRun) {
-      console.log('🔒 [DRY RUN] 跳过获取有赞Token');
+      logger.debug('[DRY RUN] 跳过获取有赞Token');
       return 'mock_token_for_dry_run';
     }
     
@@ -48,22 +48,17 @@ class YouzanClient {
         throw new Error('响应数据格式错误: ' + JSON.stringify(resp.data));
       }
     } catch (error) {
-      console.error('获取有赞Token失败:', error.message);
+      logger.error('获取有赞Token失败', { error: error.message });
       throw error;
     }
   }
 
   /**
    * 调用有赞API通用方法
-   * @param {string} api - API名称，如 'youzan.item.quantity.update'
-   * @param {string} version - API版本，如 '3.0.0'
-   * @param {object} params - API参数
-   * @returns {Promise<object>} API响应数据
    */
   async callApi(api, version, params) {
     if (this.dryRun) {
-      console.log(`🔒 [DRY RUN] 跳过调用有赞API: ${api}`);
-      console.log(`   参数: ${JSON.stringify(params, null, 2)}`);
+      logger.debug(`[DRY RUN] 跳过调用有赞API: ${api}`, { params });
       return {
         gw_err_resp: { err_code: 0, err_msg: 'dry run mode' },
         data: { success: true, message: 'DRY RUN - 未真实执行' },
@@ -84,18 +79,13 @@ class YouzanClient {
       
       return resp.data;
     } catch (error) {
-      console.error(`调用有赞API失败 [${api}]:`, error.message);
+      logger.error(`调用有赞API失败 [${api}]`, { error: error.message, params });
       throw error;
     }
   }
 
   /**
    * 更新商品库存
-   * @param {string} itemId - 商品ID
-   * @param {string} skuId - SKU ID（可选）
-   * @param {number} quantity - 库存数量
-   * @param {string} type - 更新类型：'0'=全量更新（设置为指定数量），'1'=增量更新（增加指定数量）
-   * @returns {Promise<object>} 更新结果
    */
   async updateStock(itemId, skuId, quantity, type = '0') {
     try {
@@ -110,17 +100,13 @@ class YouzanClient {
       
       return result;
     } catch (error) {
-      console.error('更新库存失败:', error.message);
+      logger.error('更新库存失败', { error: error.message, itemId, skuId, quantity, type });
       throw error;
     }
   }
 
   /**
    * 增加商品库存
-   * @param {string} itemId - 商品ID
-   * @param {string} skuId - SKU ID（可选）
-   * @param {number} quantity - 增加的数量
-   * @returns {Promise<object>} 更新结果
    */
   async addStock(itemId, skuId, quantity) {
     return await this.updateStock(itemId, skuId, quantity, '1');
@@ -128,10 +114,6 @@ class YouzanClient {
 
   /**
    * 减少商品库存
-   * @param {string} itemId - 商品ID
-   * @param {string} skuId - SKU ID（可选）
-   * @param {number} quantity - 减少的数量
-   * @returns {Promise<object>} 更新结果
    */
   async subtractStock(itemId, skuId, quantity) {
     return await this.updateStock(itemId, skuId, -quantity, '1');
@@ -139,12 +121,6 @@ class YouzanClient {
 
   /**
    * 订单发货
-   * @param {string} orderId - 订单号
-   * @param {object} logisticsData - 物流信息
-   * @param {string} logisticsData.out_stype - 物流公司代码
-   * @param {string} logisticsData.out_sid - 物流单号
-   * @param {string} logisticsData.is_no_express - 是否无需物流（'0'=需要物流，'1'=无需物流）
-   * @returns {Promise<object>} 发货结果
    */
   async shipOrder(orderId, logisticsData) {
     try {
@@ -161,17 +137,13 @@ class YouzanClient {
       
       return result;
     } catch (error) {
-      console.error('订单发货失败:', error.message);
+      logger.error('订单发货失败', { error: error.message, orderId });
       throw error;
     }
   }
 
   /**
    * 更新订单备注
-   * @param {string} orderId - 订单号
-   * @param {string} remark - 备注内容
-   * @param {string} flag - 订单标记（'0'=无标记，'1'=红旗，'2'=黄旗，'3'=绿旗）
-   * @returns {Promise<object>} 更新结果
    */
   async updateOrderRemark(orderId, remark, flag = '2') {
     try {
@@ -185,15 +157,13 @@ class YouzanClient {
       
       return result;
     } catch (error) {
-      console.error('更新订单备注失败:', error.message);
+      logger.error('更新订单备注失败', { error: error.message, orderId });
       throw error;
     }
   }
 
   /**
    * 获取订单详情
-   * @param {string} orderId - 订单号
-   * @returns {Promise<object>} 订单详情
    */
   async getOrder(orderId) {
     try {
@@ -205,16 +175,13 @@ class YouzanClient {
       
       return result;
     } catch (error) {
-      console.error('获取订单详情失败:', error.message);
+      logger.error('获取订单详情失败', { error: error.message, orderId });
       throw error;
     }
   }
 
   /**
    * 查询订单包裹详情
-   * @param {string} orderId - 订单号
-   * @param {string} kdtId - 店铺ID
-   * @returns {Promise<object>} 包裹详情
    */
   async getOrderPackages(orderId, kdtId) {
     try {
@@ -230,15 +197,13 @@ class YouzanClient {
       
       return result;
     } catch (error) {
-      console.error('查询订单包裹详情失败:', error.message);
+      logger.error('查询订单包裹详情失败', { error: error.message, orderId });
       throw error;
     }
   }
 
   /**
    * 获取商品详情
-   * @param {string} itemId - 商品ID
-   * @returns {Promise<object>} 商品详情
    */
   async getProduct(itemId) {
     try {
@@ -250,15 +215,13 @@ class YouzanClient {
       
       return result;
     } catch (error) {
-      console.error('获取商品详情失败:', error.message);
+      logger.error('获取商品详情失败', { error: error.message, itemId });
       throw error;
     }
   }
 
   /**
    * 获取退款信息
-   * @param {string} orderId - 订单号
-   * @returns {Promise<object>} 退款信息
    */
   async getRefund(orderId) {
     try {
@@ -270,7 +233,7 @@ class YouzanClient {
       
       return result;
     } catch (error) {
-      console.error('获取退款信息失败:', error.message);
+      logger.error('获取退款信息失败', { error: error.message, orderId });
       throw error;
     }
   }

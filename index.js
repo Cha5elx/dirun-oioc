@@ -9,21 +9,22 @@ const config = require('./src/config');
 const router = require('./src/routes');
 const { initDatabase } = require('./src/models');
 const { isProduction, logError } = require('./src/utils/response');
+const logger = require('./src/utils/logger');
 
 process.on('uncaughtException', (err) => {
   if (err.code === 'EPIPE' || err.code === 'ECONNRESET') {
-    console.log('客户端连接提前关闭，忽略错误:', err.code);
+    logger.warn('客户端连接提前关闭，忽略错误', { code: err.code });
     return;
   }
-  console.error('未捕获的异常:', err);
+  logger.error('未捕获的异常', { error: err.message, stack: err.stack });
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   if (reason && (reason.code === 'EPIPE' || reason.code === 'ECONNRESET' || reason.code === 'ERR_STREAM_PREMATURE_CLOSE')) {
-    console.log('客户端连接提前关闭，忽略Promise错误:', reason.code || reason.message);
+    logger.warn('客户端连接提前关闭，忽略Promise错误', { code: reason.code || reason.message });
     return;
   }
-  console.error('未处理的Promise拒绝:', reason);
+  logger.error('未处理的Promise拒绝', { reason: reason?.message || reason });
 });
 
 const app = new Koa();
@@ -33,7 +34,7 @@ app.use(async (ctx, next) => {
     await next();
   } catch (err) {
     if (err.code === 'EPIPE' || err.code === 'ECONNRESET' || err.code === 'ERR_STREAM_PREMATURE_CLOSE') {
-      console.log(`[${new Date().toISOString()}] 客户端连接提前关闭: ${ctx.path}`);
+      logger.warn('客户端连接提前关闭', { path: ctx.path });
       return;
     }
     
@@ -59,7 +60,7 @@ app.use(async (ctx, next) => {
 });
 
 if (config.security.corsOrigin === '*' && isProduction()) {
-  console.warn('警告: 生产环境下 CORS_ORIGIN 不应设置为 "*"，请配置具体的允许域名');
+  logger.warn('生产环境下 CORS_ORIGIN 不应设置为 "*"，请配置具体的允许域名');
 }
 
 app.use(cors({
@@ -144,23 +145,25 @@ app.use(async (ctx) => {
 
 async function start() {
   if (!config.jwt.secret) {
-    console.error('致命错误：JWT_SECRET 环境变量未设置。请在 .env 文件中配置一个强随机密钥（至少32位）。');
+    logger.error('致命错误：JWT_SECRET 环境变量未设置。请在 .env 文件中配置一个强随机密钥（至少32位）。');
     process.exit(1);
   }
   
   const dbReady = await initDatabase();
   if (!dbReady) {
-    console.error('数据库初始化失败，服务启动终止');
+    logger.error('数据库初始化失败，服务启动终止');
     process.exit(1);
   }
   
   app.listen(config.server.port, () => {
-    console.log(`服务器运行在端口 ${config.server.port}`);
-    console.log(`环境: ${config.server.env}`);
-    console.log(`健康检查: http://localhost:${config.server.port}/health`);
-    console.log(`有赞Webhook: http://localhost:${config.server.port}/webhook/youzan`);
-    console.log(`OIOC Webhook: http://localhost:${config.server.port}/webhook/oioc`);
-    console.log(`管理后台: http://localhost:${config.server.port}`);
+    logger.info('服务器启动成功', {
+      port: config.server.port,
+      env: config.server.env,
+      healthCheck: `http://localhost:${config.server.port}/health`,
+      youzanWebhook: `http://localhost:${config.server.port}/webhook/youzan`,
+      oiocWebhook: `http://localhost:${config.server.port}/webhook/oioc`,
+      adminPanel: `http://localhost:${config.server.port}`
+    });
   });
 }
 
