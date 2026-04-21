@@ -33,6 +33,11 @@ const SyncLogModel = sequelize.define('SyncLog', {
   timestamp: {
     type: DataTypes.STRING(50),
     allowNull: false
+  },
+  idempotencyKey: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    unique: true
   }
 }, {
   tableName: 'sync_logs',

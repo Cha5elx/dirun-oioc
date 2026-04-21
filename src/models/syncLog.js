@@ -6,15 +6,33 @@ async function create(logData) {
   const beijingTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
   const defaultTimestamp = beijingTime.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '');
   
-  const log = await SyncLogModel.create({
+  const logDataToCreate = {
     type: logData.type,
     status: logData.status,
     data: logData.data || null,
     error: logData.error || null,
     timestamp: logData.timestamp || defaultTimestamp
-  });
+  };
   
-  return log.toJSON();
+  if (logData.idempotencyKey) {
+    logDataToCreate.idempotencyKey = logData.idempotencyKey;
+  }
+  
+  try {
+    const log = await SyncLogModel.create(logDataToCreate);
+    return log.toJSON();
+  } catch (err) {
+    if (err.name === 'SequelizeUniqueConstraintError' || 
+        (err.errors && err.errors.some(e => e.type === 'unique violation'))) {
+      const existingLog = await SyncLogModel.findOne({
+        where: { idempotencyKey: logData.idempotencyKey }
+      });
+      if (existingLog) {
+        return existingLog.toJSON();
+      }
+    }
+    throw err;
+  }
 }
 
 async function findAll(options = {}) {
@@ -93,8 +111,30 @@ async function getStats() {
   return stats;
 }
 
+async function addIdempotencyCheck(idempotencyKey) {
+  const record = await SyncLogModel.findOne({
+    where: { idempotencyKey }
+  });
+  
+  if (!record) {
+    return { exists: false, status: null, record: null };
+  }
+  
+  return { exists: true, status: record.status, record: record.toJSON() };
+}
+
+async function findByIdempotencyKey(idempotencyKey) {
+  const record = await SyncLogModel.findOne({
+    where: { idempotencyKey }
+  });
+  
+  return record ? record.toJSON() : null;
+}
+
 module.exports = {
   create,
   findAll,
-  getStats
+  getStats,
+  addIdempotencyCheck,
+  findByIdempotencyKey
 };

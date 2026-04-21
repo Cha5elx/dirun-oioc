@@ -2,6 +2,8 @@ const oiocClient = require('../clients/oioc');
 const youzanClient = require('../clients/youzan');
 const { SyncLog } = require('../models');
 
+const PROCESSING_TIMEOUT_MS = 60 * 1000;
+
 class SyncService {
   constructor() {
     this.oiocClient = oiocClient;
@@ -14,7 +16,7 @@ class SyncService {
     return beijingTime.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '');
   }
 
-  async logSync(type, data, status, error = null) {
+  async logSync(type, data, status, error = null, idempotencyKey = null) {
     const timestamp = this.getBeijingTime();
     
     console.log(`[${timestamp}] ${type} - ${status}`, data, error || '');
@@ -25,17 +27,51 @@ class SyncService {
         status,
         data,
         error: error ? error.message : null,
-        timestamp: timestamp
+        timestamp: timestamp,
+        idempotencyKey
       });
     } catch (err) {
       console.error('写入日志数据库失败:', err);
     }
   }
 
+  async checkIdempotency(idempotencyKey) {
+    const result = await SyncLog.addIdempotencyCheck(idempotencyKey);
+    
+    if (!result.exists) {
+      return { canProceed: true, reason: 'new_request' };
+    }
+    
+    if (result.status === 'success') {
+      return { canProceed: false, reason: 'already_processed' };
+    }
+    
+    if (result.status === 'failed') {
+      return { canProceed: true, reason: 'retry_after_failure' };
+    }
+    
+    if (result.status === 'processing') {
+      const recordTime = new Date(result.record.timestamp.replace(' ', 'T') + 'Z').getTime();
+      const now = Date.now();
+      const elapsed = now - recordTime;
+      
+      if (elapsed > PROCESSING_TIMEOUT_MS) {
+        return { canProceed: true, reason: 'processing_timeout' };
+      }
+      
+      return { canProceed: false, reason: 'processing' };
+    }
+    
+    return { canProceed: true, reason: 'unknown_status' };
+  }
+
   async handleInbound(inboundData) {
     console.log('\n====================================');
     console.log('流程1: 商品采购入库');
     console.log('====================================');
+    
+    const { orderNo } = inboundData;
+    const idempotencyKey = orderNo ? `inbound_${orderNo}` : null;
     
     try {
       const { productId, itemId, skuId, quantity, codes, receiverID } = inboundData;
@@ -48,22 +84,33 @@ class SyncService {
         codesCount: codes ? codes.length : 0,
       });
       
-      // 1. 验证数据
       if (!itemId || !quantity) {
         throw new Error('缺少必需参数: itemId 或 quantity');
       }
       
-      // 2. 登录第三方系统
+      if (idempotencyKey) {
+        const idempotencyResult = await this.checkIdempotency(idempotencyKey);
+        
+        if (!idempotencyResult.canProceed) {
+          console.log(`⚠️  幂等性检查: ${idempotencyResult.reason}，跳过处理`);
+          return {
+            success: true,
+            message: `已处理，跳过重复请求 (${idempotencyResult.reason})`,
+            data: { itemId, skuId, quantity },
+          };
+        }
+        
+        console.log(`✅ 幂等性检查通过: ${idempotencyResult.reason}`);
+      }
+      
       console.log('🔐 登录第三方系统...');
       const loginResult = await this.oiocClient.login();
       
-      // 验证登录是否成功
       if (!loginResult || !loginResult.token) {
         throw new Error('第三方系统登录失败：未返回token');
       }
       console.log('✅ 登录成功，Token已获取');
       
-      // 3. 在第三方系统创建入库单（如果提供了productId和codes）
       if (productId && codes && codes.length > 0) {
         console.log('📝 在第三方系统创建入库单...');
         const inboundOrder = await this.oiocClient.createInboundOrder({
@@ -77,13 +124,11 @@ class SyncService {
         console.log('✅ 入库单创建成功:', inboundOrder);
       }
       
-      // 4. 更新有赞库存
       console.log('📊 更新有赞库存...');
       await this.youzanClient.addStock(itemId, skuId || '', quantity);
       console.log(`✅ 有赞库存已增加 ${quantity} 件`);
       
-      // 5. 记录日志
-      await this.logSync('inbound', inboundData, 'success');
+      await this.logSync('inbound', inboundData, 'success', null, idempotencyKey);
       
       console.log('🎉 入库流程完成\n');
       
@@ -94,7 +139,7 @@ class SyncService {
       };
     } catch (error) {
       console.error('❌ 入库同步失败:', error.message);
-      await this.logSync('inbound', inboundData, 'failed', error);
+      await this.logSync('inbound', inboundData, 'failed', error, idempotencyKey);
       
       return {
         success: false,
@@ -108,22 +153,36 @@ class SyncService {
     console.log('流程2: 销售发货 - 订单创建');
     console.log('====================================');
     
+    const { orderId, tid } = orderData;
+    const orderKey = tid || orderId;
+    const idempotencyKey = orderKey ? `order_created_${orderKey}` : null;
+    
     try {
-      const { orderId } = orderData;
+      console.log('🛒 接收订单数据:', { orderId, tid });
       
-      console.log('🛒 接收订单数据:', { orderId });
-      
-      // 1. 验证数据
-      if (!orderId) {
-        throw new Error('缺少必需参数: orderId');
+      if (!orderId && !tid) {
+        throw new Error('缺少必需参数: orderId 或 tid');
       }
       
-      // 2. 获取有赞订单详情
+      if (idempotencyKey) {
+        const idempotencyResult = await this.checkIdempotency(idempotencyKey);
+        
+        if (!idempotencyResult.canProceed) {
+          console.log(`⚠️  幂等性检查: ${idempotencyResult.reason}，跳过处理`);
+          return {
+            success: true,
+            message: `已处理，跳过重复请求 (${idempotencyResult.reason})`,
+            data: { orderId },
+          };
+        }
+        
+        console.log(`✅ 幂等性检查通过: ${idempotencyResult.reason}`);
+      }
+      
       console.log('📋 获取有赞订单详情...');
       const orderDetail = await this.youzanClient.getOrder(orderId);
       console.log('✅ 订单详情获取成功');
       
-      // 3. 提取订单信息
       const { trade } = orderDetail;
       if (!trade) {
         throw new Error('订单详情格式错误');
@@ -142,17 +201,14 @@ class SyncService {
       console.log('📦 订单商品数量:', items.length);
       console.log('📍 收货地址:', address.province, address.city, address.district);
       
-      // 4. 登录第三方系统
       console.log('🔐 登录第三方系统...');
       const loginResult = await this.oiocClient.login();
       
-      // 验证登录是否成功
       if (!loginResult || !loginResult.token) {
         throw new Error('第三方系统登录失败：未返回token');
       }
       console.log('✅ 登录成功，Token已获取');
       
-      // 5. 在第三方系统创建出库单
       console.log('📝 在第三方系统创建出库单...');
       const outboundOrder = await this.oiocClient.createOutboundOrder({
         orderNumber: orderId,
@@ -164,8 +220,7 @@ class SyncService {
       });
       console.log('✅ 出库单创建成功:', outboundOrder);
       
-      // 6. 记录日志
-      await this.logSync('order_created', orderData, 'success');
+      await this.logSync('order_created', orderData, 'success', null, idempotencyKey);
       
       console.log('🎉 订单创建流程完成\n');
       
@@ -176,7 +231,7 @@ class SyncService {
       };
     } catch (error) {
       console.error('❌ 创建出库单失败:', error.message);
-      await this.logSync('order_created', orderData, 'failed', error);
+      await this.logSync('order_created', orderData, 'failed', error, idempotencyKey);
       
       return {
         success: false,
@@ -190,21 +245,39 @@ class SyncService {
     console.log('流程2: 销售发货 - 出库发货');
     console.log('====================================');
     
+    const { orderNo, orderId } = outboundData;
+    const orderKey = orderNo || orderId;
+    const idempotencyKey = orderKey ? `outbound_${orderKey}` : null;
+    
     try {
-      const { orderId, logisticsNo, codes, itemId, skuId } = outboundData;
+      const { logisticsNo, codes, itemId, skuId } = outboundData;
       
       console.log('📦 接收出库数据:', {
         orderId,
+        orderNo,
         logisticsNo,
         codesCount: codes ? codes.length : 0,
       });
       
-      // 1. 验证数据
-      if (!orderId || !codes || codes.length === 0) {
-        throw new Error('缺少必需参数: orderId 或 codes');
+      if (!orderKey || !codes || codes.length === 0) {
+        throw new Error('缺少必需参数: orderId/orderNo 或 codes');
       }
       
-      // 2. 扣减有赞库存
+      if (idempotencyKey) {
+        const idempotencyResult = await this.checkIdempotency(idempotencyKey);
+        
+        if (!idempotencyResult.canProceed) {
+          console.log(`⚠️  幂等性检查: ${idempotencyResult.reason}，跳过处理`);
+          return {
+            success: true,
+            message: `已处理，跳过重复请求 (${idempotencyResult.reason})`,
+            data: { orderId, logisticsNo, codes },
+          };
+        }
+        
+        console.log(`✅ 幂等性检查通过: ${idempotencyResult.reason}`);
+      }
+      
       console.log('📊 扣减有赞库存...');
       const quantity = codes.length;
       if (itemId) {
@@ -214,7 +287,6 @@ class SyncService {
         console.log('⚠️  未提供itemId，跳过库存扣减');
       }
       
-      // 3. 有赞订单发货
       console.log('🚚 有赞订单发货...');
       await this.youzanClient.shipOrder(orderId, {
         out_stype: '1',
@@ -222,15 +294,13 @@ class SyncService {
       });
       console.log('✅ 订单已标记为已发货');
       
-      // 4. 更新订单备注（写入防伪码）
       console.log('📝 更新订单备注...');
       const remark = `防伪码: ${codes.map(c => c.code || c).join(', ')}`;
       await this.youzanClient.updateOrderRemark(orderId, remark);
       console.log('✅ 防伪码已写入订单备注');
       console.log('🏷️  防伪码:', codes.map(c => c.code || c).join(', '));
       
-      // 5. 记录日志
-      await this.logSync('outbound', outboundData, 'success');
+      await this.logSync('outbound', outboundData, 'success', null, idempotencyKey);
       
       console.log('🎉 出库发货流程完成\n');
       
@@ -241,7 +311,7 @@ class SyncService {
       };
     } catch (error) {
       console.error('❌ 出库同步失败:', error.message);
-      await this.logSync('outbound', outboundData, 'failed', error);
+      await this.logSync('outbound', outboundData, 'failed', error, idempotencyKey);
       
       return {
         success: false,
@@ -255,27 +325,41 @@ class SyncService {
     console.log('流程3: 退货退款 - 创建退货单');
     console.log('====================================');
     
+    const { refundId, orderId } = refundData;
+    const idempotencyKey = refundId ? `refund_${refundId}` : (orderId ? `refund_${orderId}` : null);
+    
     try {
-      const { orderId, refundId, items, receiverID } = refundData;
+      const { items, receiverID } = refundData;
       
       console.log('📦 接收退货申请:', { orderId, refundId, itemsCount: items ? items.length : 0 });
       
-      // 1. 验证数据
-      if (!orderId) {
-        throw new Error('缺少必需参数: orderId');
+      if (!orderId && !refundId) {
+        throw new Error('缺少必需参数: orderId 或 refundId');
       }
       
-      // 2. 登录第三方系统
+      if (idempotencyKey) {
+        const idempotencyResult = await this.checkIdempotency(idempotencyKey);
+        
+        if (!idempotencyResult.canProceed) {
+          console.log(`⚠️  幂等性检查: ${idempotencyResult.reason}，跳过处理`);
+          return {
+            success: true,
+            message: `已处理，跳过重复请求 (${idempotencyResult.reason})`,
+            data: { orderId, refundId },
+          };
+        }
+        
+        console.log(`✅ 幂等性检查通过: ${idempotencyResult.reason}`);
+      }
+      
       console.log('🔐 登录第三方系统...');
       const loginResult = await this.oiocClient.login();
       
-      // 验证登录是否成功
       if (!loginResult || !loginResult.token) {
         throw new Error('第三方系统登录失败：未返回token');
       }
       console.log('✅ 登录成功，Token已获取');
       
-      // 3. 在第三方系统创建退货单
       console.log('📝 在第三方系统创建退货单...');
       const returnOrder = await this.oiocClient.createReturnOrder({
         orderNumber: `RETURN${Date.now()}`,
@@ -284,8 +368,7 @@ class SyncService {
       });
       console.log('✅ 退货单创建成功:', returnOrder);
       
-      // 4. 记录日志
-      await this.logSync('refund_created', refundData, 'success');
+      await this.logSync('refund_created', refundData, 'success', null, idempotencyKey);
       
       console.log('🎉 退货单创建流程完成\n');
       
@@ -296,7 +379,7 @@ class SyncService {
       };
     } catch (error) {
       console.error('❌ 创建退货单失败:', error.message);
-      await this.logSync('refund_created', refundData, 'failed', error);
+      await this.logSync('refund_created', refundData, 'failed', error, idempotencyKey);
       
       return {
         success: false,
@@ -310,20 +393,38 @@ class SyncService {
     console.log('流程3: 退货退款 - 退货完成');
     console.log('====================================');
     
+    const { orderNo, orderId } = returnData;
+    const orderKey = orderNo || orderId;
+    const idempotencyKey = orderKey ? `return_${orderKey}` : null;
+    
     try {
-      const { orderId, codes, itemId, skuId } = returnData;
+      const { codes, itemId, skuId } = returnData;
       
       console.log('📦 接收退货完成数据:', {
         orderId,
+        orderNo,
         codesCount: codes ? codes.length : 0,
       });
       
-      // 1. 验证数据
       if (!codes || codes.length === 0) {
         throw new Error('缺少必需参数: codes');
       }
       
-      // 2. 给有赞加回库存
+      if (idempotencyKey) {
+        const idempotencyResult = await this.checkIdempotency(idempotencyKey);
+        
+        if (!idempotencyResult.canProceed) {
+          console.log(`⚠️  幂等性检查: ${idempotencyResult.reason}，跳过处理`);
+          return {
+            success: true,
+            message: `已处理，跳过重复请求 (${idempotencyResult.reason})`,
+            data: { orderId, codes },
+          };
+        }
+        
+        console.log(`✅ 幂等性检查通过: ${idempotencyResult.reason}`);
+      }
+      
       console.log('📊 恢复有赞库存...');
       const quantity = codes.length;
       if (itemId) {
@@ -333,8 +434,7 @@ class SyncService {
         console.log('⚠️  未提供itemId，跳过库存恢复');
       }
       
-      // 3. 记录日志
-      await this.logSync('return_complete', returnData, 'success');
+      await this.logSync('return_complete', returnData, 'success', null, idempotencyKey);
       
       console.log('🎉 退货完成流程完成\n');
       
@@ -345,7 +445,7 @@ class SyncService {
       };
     } catch (error) {
       console.error('❌ 退货库存恢复失败:', error.message);
-      await this.logSync('return_complete', returnData, 'failed', error);
+      await this.logSync('return_complete', returnData, 'failed', error, idempotencyKey);
       
       return {
         success: false,
@@ -355,18 +455,11 @@ class SyncService {
   }
 
   async getProductMapping(productId) {
-    // TODO: 实现产品映射关系查询
-    // 从数据库或配置文件中查询第三方productId对应的有赞itemId和skuId
-    // 返回: { itemId: 'xxx', skuId: 'xxx' }
-    
     console.log('⚠️  getProductMapping 方法待实现，请配置产品映射关系');
     return null;
   }
 
   async saveProductMapping(productId, itemId, skuId) {
-    // TODO: 实现产品映射关系保存
-    // 将第三方productId和有赞itemId、skuId的映射关系保存到数据库或配置文件
-    
     console.log('⚠️  saveProductMapping 方法待实现，请配置产品映射关系');
     return true;
   }
