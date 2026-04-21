@@ -8,6 +8,11 @@ async function initDatabase() {
     await sequelize.authenticate();
     console.log('数据库连接成功');
     
+    await sequelize.query('PRAGMA journal_mode=WAL');
+    await sequelize.query('PRAGMA busy_timeout=5000');
+    await sequelize.query('PRAGMA foreign_keys=ON');
+    console.log('数据库 WAL 模式已启用');
+    
     await sequelize.sync({ alter: true });
     console.log('数据库表同步成功');
     
