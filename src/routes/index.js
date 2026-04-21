@@ -2,23 +2,18 @@ const Router = require('koa-router');
 const webhookController = require('../controllers/webhook');
 const adminController = require('../controllers/admin');
 const { authMiddleware } = require('../middleware/auth');
+const { verifyYouzanSignature, verifyOiocSignature } = require('../middleware/verifySignature');
 
 const router = new Router();
 
-// 有赞Webhook回调地址
-router.post('/webhook/youzan', webhookController.handleYouzanWebhook);
+router.post('/webhook/youzan', verifyYouzanSignature, webhookController.handleYouzanWebhook);
 
-// 第三方一物一码Webhook回调地址
-router.post('/webhook/oioc', webhookController.handleOiocWebhook);
+router.post('/webhook/oioc', verifyOiocSignature, webhookController.handleOiocWebhook);
 
-// 健康检查
 router.get('/health', webhookController.healthCheck);
 
-// 管理后台API
-// 认证
 router.post('/api/auth/login', adminController.login);
 
-// 需要认证的接口
 router.get('/api/users', authMiddleware, adminController.getUsers);
 router.post('/api/users', authMiddleware, adminController.createUser);
 router.put('/api/users/:id', authMiddleware, adminController.updateUser);

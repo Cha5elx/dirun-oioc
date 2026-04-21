@@ -56,6 +56,24 @@ app.use(async (ctx, next) => {
   }
 });
 
+app.use(async (ctx, next) => {
+  if (ctx.path.startsWith('/webhook')) {
+    const chunks = [];
+    for await (const chunk of ctx.req) {
+      chunks.push(chunk);
+    }
+    ctx.request.rawBody = Buffer.concat(chunks).toString('utf-8');
+    try {
+      ctx.request.body = JSON.parse(ctx.request.rawBody);
+    } catch (e) {
+      ctx.request.body = {};
+    }
+    await next();
+  } else {
+    await next();
+  }
+});
+
 app.use(bodyParser());
 
 const publicPath = path.join(__dirname, 'public');
