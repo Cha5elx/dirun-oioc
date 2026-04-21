@@ -2,6 +2,7 @@ const { User, SyncLog, ProductMapping } = require('../models');
 const { generateToken } = require('../middleware/auth');
 const oiocClient = require('../clients/oioc');
 const { isProduction, logError, paramError, authError, notFoundError } = require('../utils/response');
+const { runCleanup, getCleanupStats, formatBytes } = require('../services/cleanup');
 
 async function login(ctx) {
   const { username, password } = ctx.request.body;
@@ -540,6 +541,90 @@ async function searchProductMapping(ctx) {
   }
 }
 
+async function getLogStats(ctx) {
+  try {
+    const stats = await getCleanupStats();
+    
+    ctx.body = {
+      success: true,
+      data: stats
+    };
+  } catch (error) {
+    logError(error, '获取日志统计');
+    
+    ctx.status = 500;
+    
+    if (isProduction()) {
+      ctx.body = {
+        success: false,
+        message: '获取日志统计失败',
+        code: 'INTERNAL_ERROR',
+      };
+    } else {
+      ctx.body = {
+        success: false,
+        message: error.message || '获取日志统计失败',
+        code: 'INTERNAL_ERROR',
+        detail: error.stack,
+      };
+    }
+  }
+}
+
+async function triggerCleanup(ctx) {
+  const { daysToKeep, maxLogCount } = ctx.request.body || {};
+  
+  try {
+    const result = await runCleanup({
+      daysToKeep: daysToKeep || 30,
+      maxLogCount: maxLogCount || 10000,
+      enableVacuum: true
+    });
+    
+    if (!result) {
+      ctx.body = {
+        success: true,
+        message: '清理任务正在运行中，请稍后再试'
+      };
+      return;
+    }
+    
+    ctx.body = {
+      success: true,
+      message: '清理完成',
+      data: {
+        deletedByAge: result.deletedByAge,
+        deletedByCount: result.deletedByCount,
+        totalDeleted: result.totalDeleted,
+        sizeBefore: formatBytes(result.sizeBefore),
+        sizeAfter: formatBytes(result.sizeAfter),
+        sizeSaved: formatBytes(Math.max(0, result.sizeSaved)),
+        logsBefore: result.logsBefore,
+        logsAfter: result.logsAfter
+      }
+    };
+  } catch (error) {
+    logError(error, '手动清理日志');
+    
+    ctx.status = 500;
+    
+    if (isProduction()) {
+      ctx.body = {
+        success: false,
+        message: '清理失败',
+        code: 'INTERNAL_ERROR',
+      };
+    } else {
+      ctx.body = {
+        success: false,
+        message: error.message || '清理失败',
+        code: 'INTERNAL_ERROR',
+        detail: error.stack,
+      };
+    }
+  }
+}
+
 module.exports = {
   login,
   getUsers,
@@ -554,5 +639,7 @@ module.exports = {
   createProductMapping,
   updateProductMapping,
   deleteProductMapping,
-  searchProductMapping
+  searchProductMapping,
+  getLogStats,
+  triggerCleanup
 };

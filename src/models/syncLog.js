@@ -1,5 +1,7 @@
 const SyncLogModel = require('./syncLog.model');
 const { Op } = require('sequelize');
+const fs = require('fs');
+const path = require('path');
 
 async function create(logData) {
   const now = new Date();
@@ -131,10 +133,103 @@ async function findByIdempotencyKey(idempotencyKey) {
   return record ? record.toJSON() : null;
 }
 
+async function getLogCount() {
+  return await SyncLogModel.count();
+}
+
+async function getDbStats() {
+  const total = await SyncLogModel.count();
+  
+  let earliestRecord = null;
+  let latestRecord = null;
+  
+  if (total > 0) {
+    const earliest = await SyncLogModel.findOne({
+      order: [['timestamp', 'ASC']]
+    });
+    const latest = await SyncLogModel.findOne({
+      order: [['timestamp', 'DESC']]
+    });
+    
+    earliestRecord = earliest ? earliest.timestamp : null;
+    latestRecord = latest ? latest.timestamp : null;
+  }
+  
+  return {
+    total,
+    earliestRecord,
+    latestRecord
+  };
+}
+
+function getDbFileSize() {
+  const dbPath = path.join(__dirname, '../../database/dirun.db');
+  
+  try {
+    if (fs.existsSync(dbPath)) {
+      const stats = fs.statSync(dbPath);
+      return stats.size;
+    }
+    return 0;
+  } catch (err) {
+    return 0;
+  }
+}
+
+async function cleanOldLogs(daysToKeep = 30) {
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
+  
+  const cutoffStr = cutoffDate.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '').slice(0, 19);
+  
+  const deleted = await SyncLogModel.destroy({
+    where: {
+      timestamp: {
+        [Op.lt]: cutoffStr
+      }
+    }
+  });
+  
+  return deleted;
+}
+
+async function cleanExcessLogs(maxCount = 10000) {
+  const total = await SyncLogModel.count();
+  
+  if (total <= maxCount) {
+    return 0;
+  }
+  
+  const toDelete = total - maxCount;
+  
+  const oldestLogs = await SyncLogModel.findAll({
+    order: [['timestamp', 'ASC']],
+    limit: toDelete,
+    attributes: ['id']
+  });
+  
+  const idsToDelete = oldestLogs.map(log => log.id);
+  
+  const deleted = await SyncLogModel.destroy({
+    where: {
+      id: {
+        [Op.in]: idsToDelete
+      }
+    }
+  });
+  
+  return deleted;
+}
+
 module.exports = {
   create,
   findAll,
   getStats,
   addIdempotencyCheck,
-  findByIdempotencyKey
+  findByIdempotencyKey,
+  getLogCount,
+  getDbStats,
+  getDbFileSize,
+  cleanOldLogs,
+  cleanExcessLogs
 };

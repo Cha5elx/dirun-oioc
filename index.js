@@ -10,6 +10,7 @@ const router = require('./src/routes');
 const { initDatabase } = require('./src/models');
 const { isProduction, logError } = require('./src/utils/response');
 const logger = require('./src/utils/logger');
+const { startCleanupTask, getCleanupStats } = require('./src/services/cleanup');
 
 process.on('uncaughtException', (err) => {
   if (err.code === 'EPIPE' || err.code === 'ECONNRESET') {
@@ -153,6 +154,29 @@ async function start() {
   if (!dbReady) {
     logger.error('数据库初始化失败，服务启动终止');
     process.exit(1);
+  }
+  
+  if (isProduction()) {
+    try {
+      const stats = await getCleanupStats();
+      logger.info('日志统计', {
+        totalLogs: stats.totalLogs,
+        dbSize: stats.dbSizeFormatted,
+        earliestRecord: stats.earliestRecord,
+        latestRecord: stats.latestRecord
+      });
+      
+      startCleanupTask({
+        scheduleHour: 3,
+        daysToKeep: 30,
+        maxLogCount: 10000,
+        enableVacuum: true
+      });
+      
+      logger.info('日志清理定时任务已启动（每天凌晨 3 点执行）');
+    } catch (err) {
+      logger.error('启动日志清理任务失败', { error: err.message });
+    }
   }
   
   app.listen(config.server.port, () => {

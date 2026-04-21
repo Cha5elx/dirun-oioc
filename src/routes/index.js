@@ -21,6 +21,8 @@ router.post('/api/users/:id/reset-password', authMiddleware, adminController.res
 router.delete('/api/users/:id', authMiddleware, adminController.deleteUser);
 
 router.get('/api/logs', authMiddleware, adminController.getLogs);
+router.get('/api/logs/stats', authMiddleware, adminController.getLogStats);
+router.post('/api/logs/cleanup', authMiddleware, adminController.triggerCleanup);
 router.get('/api/stats/summary', authMiddleware, adminController.getStats);
 router.get('/api/query/code/:code', authMiddleware, adminController.queryCode);
 
