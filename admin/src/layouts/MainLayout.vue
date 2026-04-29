@@ -21,6 +21,11 @@
           <span>同步日志</span>
         </el-menu-item>
         
+        <el-menu-item index="/orders">
+          <el-icon><List /></el-icon>
+          <span>有赞订单</span>
+        </el-menu-item>
+        
         <el-menu-item index="/query">
           <el-icon><Search /></el-icon>
           <span>防伪码查询</span>

@@ -1,9 +1,31 @@
+const crypto = require('crypto');
 const oiocClient = require('../clients/oioc');
 const youzanClient = require('../clients/youzan');
 const { SyncLog, ProductMapping } = require('../models');
 const logger = require('../utils/logger');
+const { getBeijingTime } = require('../utils/datetime');
+const retryQueue = require('./retryQueue');
 
 const PROCESSING_TIMEOUT_MS = 60 * 1000;
+
+function _fingerprintCodes(codes) {
+  if (!codes || codes.length === 0) return '';
+  const first = codes[0];
+  const firstStr = typeof first === 'object' ? (first.code || first.productCode || '') : String(first);
+  if (codes.length === 1) return firstStr;
+  const last = codes[codes.length - 1];
+  const lastStr = typeof last === 'object' ? (last.code || last.productCode || '') : String(last);
+  const hash = crypto.createHash('md5').update(firstStr + lastStr + codes.length).digest('hex').slice(0, 8);
+  return `${firstStr}_${lastStr}_${codes.length}_${hash}`;
+}
+
+function _shouldRetry(error) {
+  if (!error) return true;
+  const msg = error.message || '';
+  if (msg.includes('缺少必需参数')) return false;
+  if (msg.includes('格式错误')) return false;
+  return true;
+}
 
 class SyncService {
   constructor() {
@@ -11,14 +33,8 @@ class SyncService {
     this.youzanClient = youzanClient;
   }
 
-  getBeijingTime() {
-    const now = new Date();
-    const beijingTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
-    return beijingTime.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '');
-  }
-
   async logSync(type, data, status, error = null, idempotencyKey = null) {
-    const timestamp = this.getBeijingTime();
+    const timestamp = getBeijingTime();
     
     logger.info(`[${type}] ${status}`, { type, status, data, error: error?.message });
     
@@ -70,13 +86,20 @@ class SyncService {
     logger.info('====================================');
     logger.info('流程1: 商品采购入库');
     logger.info('====================================');
-    
-    const { orderNo } = inboundData;
-    const idempotencyKey = orderNo ? `inbound_${orderNo}` : null;
-    
+
+    const { orderNo, productId, itemId, skuId, quantity, codes } = inboundData;
+    let idempotencyKey = orderNo ? `inbound_${orderNo}` : null;
+
+    if (!idempotencyKey && itemId && quantity) {
+      const codesFingerprint = _fingerprintCodes(codes);
+      idempotencyKey = `inbound_${itemId}_${skuId || 'nosku'}_${quantity}` +
+        (codesFingerprint ? `_${codesFingerprint}` : '');
+      logger.debug('orderNo 缺失，使用数据指纹生成幂等键', { idempotencyKey });
+    }
+
     try {
-      const { productId, itemId, skuId, quantity, codes, receiverID } = inboundData;
-      
+      const { receiverID } = inboundData;
+
       logger.info('接收入库数据', {
         productId,
         itemId,
@@ -84,14 +107,14 @@ class SyncService {
         quantity,
         codesCount: codes ? codes.length : 0,
       });
-      
+
       if (!itemId || !quantity) {
         throw new Error('缺少必需参数: itemId 或 quantity');
       }
-      
+
       if (idempotencyKey) {
         const idempotencyResult = await this.checkIdempotency(idempotencyKey);
-        
+
         if (!idempotencyResult.canProceed) {
           logger.warn(`幂等性检查: ${idempotencyResult.reason}，跳过处理`);
           return {
@@ -100,18 +123,18 @@ class SyncService {
             data: { itemId, skuId, quantity },
           };
         }
-        
+
         logger.debug(`幂等性检查通过: ${idempotencyResult.reason}`);
       }
-      
+
       logger.info('登录第三方系统...');
       const loginResult = await this.oiocClient.login();
-      
+
       if (!loginResult || !loginResult.token) {
         throw new Error('第三方系统登录失败：未返回token');
       }
       logger.info('登录成功，Token已获取');
-      
+
       if (productId && codes && codes.length > 0) {
         logger.info('在第三方系统创建入库单...');
         const inboundOrder = await this.oiocClient.createInboundOrder({
@@ -124,11 +147,11 @@ class SyncService {
         });
         logger.info('入库单创建成功', { inboundOrder });
       }
-      
+
       logger.info('更新有赞库存...');
       await this.youzanClient.addStock(itemId, skuId || '', quantity);
       logger.info(`有赞库存已增加 ${quantity} 件`, { itemId, skuId, quantity });
-      
+
       if (productId && itemId) {
         logger.info('保存产品映射关系...');
         await this.saveProductMapping({
@@ -137,11 +160,11 @@ class SyncService {
           oiocProductCode: productId,
         });
       }
-      
+
       await this.logSync('inbound', inboundData, 'success', null, idempotencyKey);
-      
+
       logger.info('入库流程完成');
-      
+
       return {
         success: true,
         message: '入库同步成功',
@@ -150,7 +173,11 @@ class SyncService {
     } catch (error) {
       logger.error('入库同步失败', { error: error.message, stack: error.stack });
       await this.logSync('inbound', inboundData, 'failed', error, idempotencyKey);
-      
+
+      if (_shouldRetry(error)) {
+        retryQueue.enqueue('inbound', inboundData, this.handleInbound.bind(this));
+      }
+
       return {
         success: false,
         message: error.message,
@@ -256,7 +283,11 @@ class SyncService {
     } catch (error) {
       logger.error('创建出库单失败', { error: error.message, stack: error.stack });
       await this.logSync('order_created', orderData, 'failed', error, idempotencyKey);
-      
+
+      if (_shouldRetry(error)) {
+        retryQueue.enqueue('order_created', orderData, this.handleOrderCreated.bind(this));
+      }
+
       return {
         success: false,
         message: error.message,
@@ -354,7 +385,11 @@ class SyncService {
     } catch (error) {
       logger.error('出库同步失败', { error: error.message, stack: error.stack });
       await this.logSync('outbound', outboundData, 'failed', error, idempotencyKey);
-      
+
+      if (_shouldRetry(error)) {
+        retryQueue.enqueue('outbound', outboundData, this.handleOutbound.bind(this));
+      }
+
       return {
         success: false,
         message: error.message,
@@ -422,7 +457,11 @@ class SyncService {
     } catch (error) {
       logger.error('创建退货单失败', { error: error.message, stack: error.stack });
       await this.logSync('refund_created', refundData, 'failed', error, idempotencyKey);
-      
+
+      if (_shouldRetry(error)) {
+        retryQueue.enqueue('refund_created', refundData, this.handleRefund.bind(this));
+      }
+
       return {
         success: false,
         message: error.message,
@@ -507,7 +546,11 @@ class SyncService {
     } catch (error) {
       logger.error('退货库存恢复失败', { error: error.message, stack: error.stack });
       await this.logSync('return_complete', returnData, 'failed', error, idempotencyKey);
-      
+
+      if (_shouldRetry(error)) {
+        retryQueue.enqueue('return_complete', returnData, this.handleReturnComplete.bind(this));
+      }
+
       return {
         success: false,
         message: error.message,

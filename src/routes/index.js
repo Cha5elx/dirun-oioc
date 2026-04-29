@@ -32,4 +32,9 @@ router.put('/api/product-mappings/:id', authMiddleware, roleMiddleware('admin'),
 router.delete('/api/product-mappings/:id', authMiddleware, roleMiddleware('admin'), adminController.deleteProductMapping);
 router.get('/api/product-mappings/search', authMiddleware, roleMiddleware('admin'), adminController.searchProductMapping);
 
+router.get('/api/youzan/orders', authMiddleware, roleMiddleware('operator'), adminController.getYouzanOrders);
+router.get('/api/youzan/orders/:orderId', authMiddleware, roleMiddleware('operator'), adminController.getYouzanOrderDetail);
+
+router.get('/api/retry-queue/stats', authMiddleware, roleMiddleware('admin'), adminController.getRetryQueueStats);
+
 module.exports = router;

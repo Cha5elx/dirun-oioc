@@ -2,11 +2,10 @@ const SyncLogModel = require('./syncLog.model');
 const { Op } = require('sequelize');
 const fs = require('fs');
 const path = require('path');
+const { getBeijingTime } = require('../utils/datetime');
 
 async function create(logData) {
-  const now = new Date();
-  const beijingTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
-  const defaultTimestamp = beijingTime.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '');
+  const defaultTimestamp = getBeijingTime();
   
   const logDataToCreate = {
     type: logData.type,

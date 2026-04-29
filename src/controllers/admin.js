@@ -1,6 +1,7 @@
 const { User, SyncLog, ProductMapping } = require('../models');
 const { generateToken, isAdmin, hasRole, ROLE_HIERARCHY } = require('../middleware/auth');
 const oiocClient = require('../clients/oioc');
+const youzanClient = require('../clients/youzan');
 const { isProduction, logError, paramError, authError, notFoundError } = require('../utils/response');
 const { runCleanup, getCleanupStats, formatBytes } = require('../services/cleanup');
 
@@ -650,6 +651,110 @@ async function triggerCleanup(ctx) {
   }
 }
 
+async function getYouzanOrders(ctx) {
+  const { page = 1, pageSize = 20, status, startCreated, endCreated } = ctx.query;
+
+  try {
+    const result = await youzanClient.getOrders({
+      page: parseInt(page),
+      pageSize: parseInt(pageSize),
+      status,
+      startCreated,
+      endCreated,
+    });
+
+    const trades = (result.data && result.data.items) || [];
+    const total = (result.data && result.data.total_results) || 0;
+
+    ctx.body = {
+      success: true,
+      data: {
+        list: trades,
+        total,
+        page: parseInt(page),
+        pageSize: parseInt(pageSize),
+      },
+    };
+  } catch (error) {
+    logError(error, '获取有赞订单列表');
+
+    ctx.status = 500;
+
+    if (isProduction()) {
+      ctx.body = {
+        success: false,
+        message: '获取有赞订单列表失败',
+        code: 'INTERNAL_ERROR',
+      };
+    } else {
+      ctx.body = {
+        success: false,
+        message: error.message || '获取有赞订单列表失败',
+        code: 'INTERNAL_ERROR',
+        detail: error.stack,
+      };
+    }
+  }
+}
+
+async function getYouzanOrderDetail(ctx) {
+  const { orderId } = ctx.params;
+
+  if (!orderId) {
+    paramError(ctx, '订单号不能为空');
+    return;
+  }
+
+  try {
+    const result = await youzanClient.getOrder(orderId);
+
+    ctx.body = {
+      success: true,
+      data: result.data || {},
+    };
+  } catch (error) {
+    logError(error, '获取有赞订单详情');
+
+    ctx.status = 500;
+
+    if (isProduction()) {
+      ctx.body = {
+        success: false,
+        message: '获取有赞订单详情失败',
+        code: 'INTERNAL_ERROR',
+      };
+    } else {
+      ctx.body = {
+        success: false,
+        message: error.message || '获取有赞订单详情失败',
+        code: 'INTERNAL_ERROR',
+        detail: error.stack,
+      };
+    }
+  }
+}
+
+async function getRetryQueueStats(ctx) {
+  try {
+    const retryQueue = require('../services/retryQueue');
+    const stats = retryQueue.getStats();
+
+    ctx.body = {
+      success: true,
+      data: stats,
+    };
+  } catch (error) {
+    logError(error, '获取重试队列统计');
+
+    ctx.status = 500;
+    ctx.body = {
+      success: false,
+      message: '获取重试队列统计失败',
+      code: 'INTERNAL_ERROR',
+    };
+  }
+}
+
 module.exports = {
   login,
   getUsers,
@@ -666,5 +771,8 @@ module.exports = {
   deleteProductMapping,
   searchProductMapping,
   getLogStats,
-  triggerCleanup
+  triggerCleanup,
+  getYouzanOrders,
+  getYouzanOrderDetail,
+  getRetryQueueStats
 };

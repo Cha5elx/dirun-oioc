@@ -237,6 +237,32 @@ class YouzanClient {
       throw error;
     }
   }
+
+  async getOrders({ page = 1, pageSize = 20, status, startCreated, endCreated } = {}) {
+    try {
+      const params = {
+        page_no: String(page),
+        page_size: String(pageSize),
+      };
+      
+      if (status) {
+        params.status = status;
+      }
+      if (startCreated) {
+        params.start_created = startCreated;
+      }
+      if (endCreated) {
+        params.end_created = endCreated;
+      }
+      
+      const result = await this.callApi('youzan.trades.sold.get', '4.0.0', params);
+      
+      return result;
+    } catch (error) {
+      logger.error('获取订单列表失败', { error: error.message, params: arguments[0] });
+      throw error;
+    }
+  }
 }
 
 module.exports = new YouzanClient();

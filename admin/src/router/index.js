@@ -26,6 +26,12 @@ const routes = [
         meta: { title: '同步日志', icon: 'Document' }
       },
       {
+        path: 'orders',
+        name: 'Orders',
+        component: () => import('@/views/Orders.vue'),
+        meta: { title: '有赞订单', icon: 'List' }
+      },
+      {
         path: 'query',
         name: 'Query',
         component: () => import('@/views/Query.vue'),
