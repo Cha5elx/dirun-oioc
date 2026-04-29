@@ -665,9 +665,37 @@ async function getYouzanOrders(ctx) {
       endUpdate,
     });
 
-    const response = result.response || {};
-    const trades = response.trades || [];
-    const total = response.total_results || 0;
+    // 检查API错误
+    if (result.gw_err_resp && result.gw_err_resp.err_code !== 0) {
+      console.error('有赞API返回错误:', result.gw_err_resp);
+      ctx.status = 500;
+      ctx.body = {
+        success: false,
+        message: result.gw_err_resp.err_msg || '有赞API调用失败',
+        code: 'YOUZAN_API_ERROR',
+        detail: result.gw_err_resp,
+      };
+      return;
+    }
+
+    // 解析响应数据 - 支持多种可能的数据结构
+    let trades = [];
+    let total = 0;
+
+    if (result.response) {
+      // 4.0.2 版本结构
+      trades = result.response.trades || [];
+      total = result.response.total_results || 0;
+    } else if (result.data) {
+      // 可能的替代结构
+      trades = result.data.trades || result.data.items || [];
+      total = result.data.total_results || result.data.total || 0;
+    } else if (Array.isArray(result.trades)) {
+      trades = result.trades;
+      total = result.total_results || trades.length;
+    }
+
+    console.log('有赞订单查询结果:', { total, tradesCount: trades.length });
 
     ctx.body = {
       success: true,

@@ -42,6 +42,14 @@
         </el-button>
       </div>
 
+      <el-alert
+        v-if="errorMsg && !loading"
+        :title="errorMsg"
+        :type="errorMsg.includes('暂无') ? 'info' : 'error'"
+        :closable="false"
+        style="margin-bottom: 16px;"
+      />
+
       <el-table :data="orders" stripe v-loading="loading">
         <el-table-column prop="tid" label="订单号" width="180" />
         <el-table-column prop="created" label="下单时间" width="180">
@@ -223,8 +231,11 @@ function formatDateTime(date) {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 }
 
+const errorMsg = ref('')
+
 async function fetchOrders() {
   loading.value = true
+  errorMsg.value = ''
   try {
     const params = {
       page: pagination.page,
@@ -250,10 +261,25 @@ async function fetchOrders() {
     }
 
     const res = await api.get('/youzan/orders', { params })
+
+    if (!res.success) {
+      errorMsg.value = res.message || '获取订单失败'
+      orders.value = []
+      pagination.total = 0
+      return
+    }
+
     orders.value = res.data.list || []
     pagination.total = res.data.total || 0
+
+    if (orders.value.length === 0) {
+      errorMsg.value = '暂无订单数据'
+    }
   } catch (error) {
     console.error('获取订单失败:', error)
+    errorMsg.value = error.response?.data?.message || '网络错误，请稍后重试'
+    orders.value = []
+    pagination.total = 0
   } finally {
     loading.value = false
   }
