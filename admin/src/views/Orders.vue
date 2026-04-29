@@ -33,7 +33,9 @@
           start-placeholder="开始日期"
           end-placeholder="结束日期"
           style="width: 260px;"
-          @change="handleFilter"
+          :disabled-date="disabledDate"
+          @change="handleDateChange"
+          @calendar-change="handleCalendarChange"
         />
 
         <el-button type="success" @click="fetchTodayOrders">
@@ -41,6 +43,21 @@
           今日订单
         </el-button>
       </div>
+
+      <el-alert
+        v-if="dateRangeError"
+        :title="dateRangeError"
+        type="warning"
+        :closable="false"
+        style="margin-bottom: 16px;"
+      />
+
+      <el-alert
+        title="提示：时间跨度不能超过3个月"
+        type="info"
+        :closable="false"
+        style="margin-bottom: 16px;"
+      />
 
       <el-alert
         v-if="errorMsg && !loading"
@@ -148,13 +165,17 @@
 
 <script setup>
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import api from '@/api'
 
 const loading = ref(false)
 const orders = ref([])
 const detailVisible = ref(false)
 const currentOrder = ref({})
+const dateRangeError = ref('')
+const selectDate = ref(null)
 let refreshTimer = null
+const MAX_DAYS = 92 // 约3个月
 const REFRESH_INTERVAL = 60000
 
 const filters = reactive({
@@ -229,6 +250,36 @@ function formatDateTime(date) {
   const minutes = String(date.getMinutes()).padStart(2, '0')
   const seconds = String(date.getSeconds()).padStart(2, '0')
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+}
+
+function handleCalendarChange(val) {
+  selectDate.value = val ? val[0] : null
+}
+
+function disabledDate(time) {
+  if (selectDate.value) {
+    const minDate = new Date(selectDate.value)
+    minDate.setDate(minDate.getDate() - MAX_DAYS)
+    const maxDate = new Date(selectDate.value)
+    maxDate.setDate(maxDate.getDate() + MAX_DAYS)
+    return time.getTime() < minDate.getTime() || time.getTime() > maxDate.getTime()
+  }
+  return false
+}
+
+function handleDateChange(val) {
+  dateRangeError.value = ''
+  if (val && val.length === 2) {
+    const start = new Date(val[0])
+    const end = new Date(val[1])
+    const diffDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24))
+    if (diffDays > MAX_DAYS) {
+      dateRangeError.value = `时间跨度不能超过3个月（当前选择${diffDays}天）`
+      filters.dateRange = null
+      return
+    }
+  }
+  handleFilter()
 }
 
 const errorMsg = ref('')
