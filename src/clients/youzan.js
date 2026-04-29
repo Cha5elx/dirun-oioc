@@ -238,13 +238,13 @@ class YouzanClient {
     }
   }
 
-  async getOrders({ page = 1, pageSize = 20, status, startCreated, endCreated } = {}) {
+  async getOrders({ page = 1, pageSize = 20, status, startCreated, endCreated, startUpdate, endUpdate } = {}) {
     try {
       const params = {
         page_no: String(page),
         page_size: String(pageSize),
       };
-      
+
       if (status) {
         params.status = status;
       }
@@ -254,9 +254,15 @@ class YouzanClient {
       if (endCreated) {
         params.end_created = endCreated;
       }
-      
-      const result = await this.callApi('youzan.trades.sold.get', '4.0.0', params);
-      
+      if (startUpdate) {
+        params.start_update = startUpdate;
+      }
+      if (endUpdate) {
+        params.end_update = endUpdate;
+      }
+
+      const result = await this.callApi('youzan.trades.sold.get', '4.0.2', params);
+
       return result;
     } catch (error) {
       logger.error('获取订单列表失败', { error: error.message, params: arguments[0] });

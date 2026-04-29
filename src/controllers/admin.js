@@ -652,7 +652,7 @@ async function triggerCleanup(ctx) {
 }
 
 async function getYouzanOrders(ctx) {
-  const { page = 1, pageSize = 20, status, startCreated, endCreated } = ctx.query;
+  const { page = 1, pageSize = 20, status, startCreated, endCreated, startUpdate, endUpdate } = ctx.query;
 
   try {
     const result = await youzanClient.getOrders({
@@ -661,10 +661,13 @@ async function getYouzanOrders(ctx) {
       status,
       startCreated,
       endCreated,
+      startUpdate,
+      endUpdate,
     });
 
-    const trades = (result.data && result.data.items) || [];
-    const total = (result.data && result.data.total_results) || 0;
+    const response = result.response || {};
+    const trades = response.trades || [];
+    const total = response.total_results || 0;
 
     ctx.body = {
       success: true,

@@ -10,16 +10,22 @@
           </el-button>
         </div>
       </template>
-      
+
       <div class="filter-bar">
         <el-select v-model="filters.status" placeholder="订单状态" clearable style="width: 150px;" @change="handleFilter">
-          <el-option label="待付款" value="WAIT_PAY" />
-          <el-option label="待发货" value="WAIT_SEND" />
-          <el-option label="已发货" value="WAIT_RECEIVE" />
+          <el-option label="待付款" value="WAIT_BUYER_PAY" />
+          <el-option label="待发货" value="WAIT_SELLER_SEND_GOODS" />
+          <el-option label="已发货" value="WAIT_BUYER_CONFIRM_GOODS" />
           <el-option label="已完成" value="TRADE_SUCCESS" />
           <el-option label="已关闭" value="TRADE_CLOSED" />
+          <el-option label="退款中" value="TRADE_REFUND" />
         </el-select>
-        
+
+        <el-select v-model="filters.dateType" placeholder="时间类型" style="width: 120px;" @change="handleFilter">
+          <el-option label="创建时间" value="created" />
+          <el-option label="更新时间" value="update" />
+        </el-select>
+
         <el-date-picker
           v-model="filters.dateRange"
           type="daterange"
@@ -29,8 +35,13 @@
           style="width: 260px;"
           @change="handleFilter"
         />
+
+        <el-button type="success" @click="fetchTodayOrders">
+          <el-icon><Calendar /></el-icon>
+          今日订单
+        </el-button>
       </div>
-      
+
       <el-table :data="orders" stripe v-loading="loading">
         <el-table-column prop="tid" label="订单号" width="180" />
         <el-table-column prop="created" label="下单时间" width="180">
@@ -73,7 +84,7 @@
           </template>
         </el-table-column>
       </el-table>
-      
+
       <div class="pagination">
         <el-pagination
           v-model:current-page="pagination.page"
@@ -86,13 +97,14 @@
         />
       </div>
     </el-card>
-    
+
     <el-dialog v-model="detailVisible" title="订单详情" width="700px">
       <el-descriptions :column="2" border>
         <el-descriptions-item label="订单号">{{ currentOrder.tid }}</el-descriptions-item>
         <el-descriptions-item label="订单状态">
           <el-tag :type="getStatusType(currentOrder.status)">{{ getStatusName(currentOrder.status) }}</el-tag>
         </el-descriptions-item>
+        <el-table-column prop="status_str" label="状态描述" width="120" />
         <el-descriptions-item label="下单时间">{{ formatTime(currentOrder.created) }}</el-descriptions-item>
         <el-descriptions-item label="支付时间">{{ formatTime(currentOrder.pay_time) }}</el-descriptions-item>
         <el-descriptions-item label="订单金额">¥{{ ((currentOrder.total_fee || 0) / 100).toFixed(2) }}</el-descriptions-item>
@@ -105,7 +117,7 @@
           {{ currentOrder.receiver_state }}{{ currentOrder.receiver_city }}{{ currentOrder.receiver_district }}{{ currentOrder.receiver_address }}
         </el-descriptions-item>
       </el-descriptions>
-      
+
       <div class="order-items-title">商品明细</div>
       <el-table :data="currentOrder.orders || []" stripe size="small">
         <el-table-column prop="title" label="商品名称" min-width="200" />
@@ -139,6 +151,7 @@ const REFRESH_INTERVAL = 60000
 
 const filters = reactive({
   status: '',
+  dateType: 'created',
   dateRange: null
 })
 
@@ -149,19 +162,21 @@ const pagination = reactive({
 })
 
 const statusMap = {
-  'WAIT_PAY': '待付款',
-  'WAIT_SEND': '待发货',
-  'WAIT_RECEIVE': '已发货',
+  'WAIT_BUYER_PAY': '待付款',
+  'WAIT_SELLER_SEND_GOODS': '待发货',
+  'WAIT_BUYER_CONFIRM_GOODS': '已发货',
   'TRADE_SUCCESS': '已完成',
-  'TRADE_CLOSED': '已关闭'
+  'TRADE_CLOSED': '已关闭',
+  'TRADE_REFUND': '退款中'
 }
 
 const statusTypeMap = {
-  'WAIT_PAY': 'warning',
-  'WAIT_SEND': 'primary',
-  'WAIT_RECEIVE': 'info',
+  'WAIT_BUYER_PAY': 'warning',
+  'WAIT_SELLER_SEND_GOODS': 'primary',
+  'WAIT_BUYER_CONFIRM_GOODS': 'info',
   'TRADE_SUCCESS': 'success',
-  'TRADE_CLOSED': 'danger'
+  'TRADE_CLOSED': 'danger',
+  'TRADE_REFUND': 'danger'
 }
 
 const payTypeMap = {
@@ -198,6 +213,16 @@ function formatTime(timestamp) {
   })
 }
 
+function formatDateTime(date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  const seconds = String(date.getSeconds()).padStart(2, '0')
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+}
+
 async function fetchOrders() {
   loading.value = true
   try {
@@ -205,16 +230,25 @@ async function fetchOrders() {
       page: pagination.page,
       pageSize: pagination.pageSize
     }
-    
+
     if (filters.status) {
       params.status = filters.status
     }
-    
+
     if (filters.dateRange && filters.dateRange.length === 2) {
-      params.startCreated = filters.dateRange[0].toISOString().replace(/\.\d{3}Z$/, '')
-      params.endCreated = filters.dateRange[1].toISOString().replace(/\.\d{3}Z$/, '')
+      const startDate = new Date(filters.dateRange[0])
+      const endDate = new Date(filters.dateRange[1])
+      endDate.setHours(23, 59, 59, 999)
+
+      if (filters.dateType === 'update') {
+        params.startUpdate = formatDateTime(startDate)
+        params.endUpdate = formatDateTime(endDate)
+      } else {
+        params.startCreated = formatDateTime(startDate)
+        params.endCreated = formatDateTime(endDate)
+      }
     }
-    
+
     const res = await api.get('/youzan/orders', { params })
     orders.value = res.data.list || []
     pagination.total = res.data.total || 0
@@ -223,6 +257,19 @@ async function fetchOrders() {
   } finally {
     loading.value = false
   }
+}
+
+function fetchTodayOrders() {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  tomorrow.setHours(0, 0, 0, 0)
+
+  filters.dateRange = [today, tomorrow]
+  filters.dateType = 'created'
+  pagination.page = 1
+  fetchOrders()
 }
 
 function handleFilter() {
