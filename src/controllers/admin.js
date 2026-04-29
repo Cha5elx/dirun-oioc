@@ -682,16 +682,70 @@ async function getYouzanOrders(ctx) {
     let trades = [];
     let total = 0;
 
-    // 打印完整响应用于调试（限制长度）
-    console.log('有赞API原始响应:', JSON.stringify(result).substring(0, 800));
-
     if (result.data) {
       const data = result.data;
 
       // 4.0.2 版本返回 full_order_info_list
       if (data.full_order_info_list && Array.isArray(data.full_order_info_list)) {
-        // 提取 full_order_info 作为订单数据
-        trades = data.full_order_info_list.map(item => item.full_order_info || item);
+        // 调试：打印原始数据结构
+        if (data.full_order_info_list.length > 0) {
+          const firstItem = data.full_order_info_list[0];
+          console.log('原始full_order_info键:', Object.keys(firstItem.full_order_info || firstItem));
+          const rawOrderInfo = (firstItem.full_order_info || firstItem).order_info || {};
+          console.log('原始order_info键:', Object.keys(rawOrderInfo));
+          console.log('原始orders:', rawOrderInfo.orders);
+        }
+
+        // 提取并转换 full_order_info 为前端期望的格式
+        trades = data.full_order_info_list.map(item => {
+          const info = item.full_order_info || item;
+          const orderInfo = info.order_info || {};
+          const addressInfo = info.address_info || {};
+          const payInfo = info.pay_info || {};
+          const remarkInfo = info.remark_info || {};
+
+          // orders 在 full_order_info 级别，不是在 order_info 下
+          const ordersList = info.orders || [];
+
+          // 处理时间：有赞返回的是字符串格式 "2026-04-23 10:30:00"，需要转换成时间戳
+          let createdTime = 0;
+          if (orderInfo.created) {
+            // 字符串格式转时间戳
+            const dateStr = orderInfo.created.replace(/-/g, '/');
+            createdTime = Math.floor(new Date(dateStr).getTime() / 1000);
+          } else if (orderInfo.created_time) {
+            createdTime = orderInfo.created_time;
+          }
+
+          // 处理收货人信息：检查是否加密（加密信息通常以$开头或很长）
+          let receiverName = addressInfo.receiver_name || addressInfo.delivery_name || '';
+          let receiverMobile = addressInfo.receiver_tel || addressInfo.delivery_tel || '';
+
+          // 如果是加密信息，隐藏显示
+          if (receiverName && (receiverName.startsWith('$') || receiverName.length > 50)) {
+            receiverName = '***';
+          }
+          if (receiverMobile && (receiverMobile.startsWith('$') || receiverMobile.length > 50)) {
+            receiverMobile = '***';
+          }
+
+          return {
+            tid: orderInfo.tid || '',
+            created: createdTime,
+            status: orderInfo.status || '',
+            status_str: orderInfo.status_str || '',
+            pay_type: payInfo.pay_type || '',
+            total_fee: parseFloat(payInfo.total_fee || 0) * 100,
+            pay_fee: parseFloat(payInfo.payment || payInfo.total_fee || 0) * 100,
+            receiver_name: receiverName,
+            receiver_mobile: receiverMobile,
+            receiver_address: `${addressInfo.delivery_province || ''}${addressInfo.delivery_city || ''}${addressInfo.delivery_district || ''}${addressInfo.delivery_address || ''}`,
+            buyer_message: remarkInfo.buyer_message || '',
+            orders: ordersList,
+            // 保留原始数据供详情查看
+            _raw: info
+          };
+        });
         total = data.total_results || data.totalResults || trades.length;
       }
       // 兼容其他可能的结构
@@ -705,6 +759,18 @@ async function getYouzanOrders(ctx) {
     }
 
     console.log('有赞订单查询结果:', { total, tradesCount: trades.length });
+
+    // 调试：打印第一个订单的详细信息
+    if (trades.length > 0) {
+      console.log('第一个订单的键:', Object.keys(trades[0]));
+      console.log('orders字段:', trades[0].orders);
+      console.log('orders长度:', trades[0].orders ? trades[0].orders.length : 0);
+      if (trades[0].orders && trades[0].orders.length > 0) {
+        console.log('商品信息示例:', JSON.stringify(trades[0].orders[0]).substring(0, 500));
+      } else {
+        console.log('orders为空或不存在');
+      }
+    }
 
     ctx.body = {
       success: true,
