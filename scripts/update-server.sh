@@ -85,16 +85,15 @@ else
     npm install
 fi
 
-# 7. 更新前端
+# 7. 确认前端资源（从 Git 拉取，已预构建）
 echo ""
-read -p "是否重新构建前端? (y/n): " rebuild_frontend
-if [ "$rebuild_frontend" = "y" ]; then
-    echo "🏗️  构建前端..."
-    cd admin
-    npm install
-    npm run build
-    cd ..
-    echo "✅ 前端构建完成（Vite 直接输出到 public/ 目录）"
+echo "🖼️  前端资源..."
+if [ -d "public" ] && [ -n "$(ls -A public/ 2>/dev/null)" ]; then
+    echo "✅ public/ 目录已包含预构建的前端资源"
+    echo "   前端在本地构建后推送到 Git，服务器 git pull 直接使用"
+else
+    echo "⚠️  public/ 目录为空！请确保在本地构建前端并推送到 Git"
+    echo "   本地构建命令: cd admin && npm run build"
 fi
 
 # 8. 检查环境变量
@@ -109,7 +108,7 @@ if [ ! -f ".env" ]; then
     fi
 fi
 
-# 9. 重启服务
+# 9. 重启服务（优先使用 reload 实现零停机）
 echo ""
 echo "🔄 重启服务..."
 
@@ -118,7 +117,20 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 nvm use $NODE_VERSION 2>/dev/null || nvm use default
 
-pm2 restart dirun-oioc
+# 检测 PM2 实例数，>=2 时使用 reload 实现零停机
+INSTANCE_COUNT=$(pm2 show dirun-oioc 2>/dev/null | grep -oP 'instances.*?\K\d+' | head -1)
+if [ -z "$INSTANCE_COUNT" ]; then
+    INSTANCE_COUNT=1
+fi
+
+if [ "$INSTANCE_COUNT" -ge 2 ]; then
+    echo "检测到 $INSTANCE_COUNT 个实例，使用 reload 实现零停机更新..."
+    pm2 reload dirun-oioc
+else
+    echo "单实例模式，使用 restart（有 2~5 秒停机）..."
+    echo "💡 建议升级为集群模式: pm2 scale dirun-oioc 2"
+    pm2 restart dirun-oioc
+fi
 
 # 10. 健康检查
 echo ""
@@ -157,5 +169,5 @@ echo ""
 echo "Node.js: $(node -v)"
 echo ""
 echo "查看日志: pm2 logs dirun-oioc"
-echo "回滚命令: sudo cp -r $BACKUP_DIR/dirun_oioc/* $PROJECT_DIR/ && pm2 restart dirun-oioc"
+echo "回滚命令: sudo cp -r $BACKUP_DIR/dirun_oioc/* $PROJECT_DIR/ && pm2 reload dirun-oioc"
 echo ""

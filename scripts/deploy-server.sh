@@ -118,15 +118,22 @@ nvm use $NODE_VERSION
 
 npm install
 
-# 7. 构建前端
+# 7. 确认前端资源
 echo ""
-echo "🏗️  构建前端..."
-mkdir -p public
-cd admin
-npm install
-npm run build
-cd ..
-echo "✅ 前端构建完成（Vite 直接输出到 public/ 目录）"
+if [ -d "public" ] && [ -n "$(ls -A public 2>/dev/null)" ]; then
+    echo "✅ public/ 目录已包含预构建的前端资源（随 Git 仓库克隆）"
+    echo "   无需在服务器上构建前端"
+else
+    echo "⚠️  public/ 目录为空或不完整"
+    echo "   前端应在本地构建后推送到 Git，服务器直接拉取使用"
+    echo "   本地构建命令: cd admin && npm run build"
+    echo ""
+    read -p "是否现在在服务器上构建前端？(y/n): " build_now
+    if [ "$build_now" = "y" ]; then
+        echo "🏗️  构建前端（服务器端）..."
+        cd admin && npm install && npm run build && cd ..
+    fi
+fi
 
 # 8. 配置环境变量
 echo ""

@@ -55,8 +55,7 @@ else
     cd /opt/dirun_oioc
     git pull
     npm install
-    cd admin && npm install && npm run build && cp -r dist/* ../public/ && cd ..
-    pm2 restart dirun-oioc
+    pm2 reload dirun-oioc 2>/dev/null || pm2 restart dirun-oioc
 fi
 ENDSSH
 

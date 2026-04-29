@@ -3,6 +3,9 @@
 echo "========================================="
 echo "  本地代码推送到GitHub"
 echo "========================================="
+echo ""
+echo "工作流: 本地构建前端 → 推送到 GitHub → 服务器 git pull 直接用"
+echo ""
 
 # 检查是否在项目根目录
 if [ ! -f "package.json" ]; then
@@ -10,21 +13,53 @@ if [ ! -f "package.json" ]; then
     exit 1
 fi
 
-# 检查git是否已初始化
-if [ ! -d ".git" ]; then
-    echo "📦 初始化Git仓库..."
-    git init
+# 检查前端源码是否有变更，提示构建
+ADMIN_SRC="admin/src/"
+if [ -d "$ADMIN_SRC" ]; then
+    # 检查是否有未提交的前端源码变更
+    ADMIN_CHANGES=$(git status --porcelain "$ADMIN_SRC" 2>/dev/null)
+    PUBLIC_CHANGES=$(git status --porcelain public/ 2>/dev/null)
+
+    if [ -n "$ADMIN_CHANGES" ] || [ -n "$PUBLIC_CHANGES" ]; then
+        echo "⚠️  检测到前端相关变更（admin/src/ 或 public/）"
+        echo ""
+        read -p "是否重新构建前端？(y/n，默认 y): " rebuild_frontend
+        rebuild_frontend=${rebuild_frontend:-y}
+
+        if [ "$rebuild_frontend" = "y" ]; then
+            echo "🏗️  构建前端..."
+            cd admin
+            npm run build
+            BUILD_RESULT=$?
+            cd ..
+
+            if [ $BUILD_RESULT -ne 0 ]; then
+                echo "❌ 前端构建失败，请检查错误后重试"
+                exit 1
+            fi
+            echo "✅ 前端构建完成（public/ 目录已更新）"
+        else
+            echo "⚠️  跳过前端构建，使用当前 public/ 目录内容"
+            echo "   如需更新前端，请先执行: cd admin && npm run build"
+        fi
+    fi
 fi
 
 # 检查是否有未提交的更改
-if [ -n "$(git status --porcelain)" ]; then
-    echo "📝 提交代码更改..."
-    git add .
+if [ -z "$(git status --porcelain)" ]; then
+    echo "✅ 没有需要提交的更改，直接推送..."
+else
+    echo ""
+    echo "📝 以下文件将被提交："
+    echo "---"
+    git status --short
+    echo "---"
+    echo ""
     read -p "请输入提交信息 (默认: Update): " commit_msg
     commit_msg=${commit_msg:-"Update"}
+
+    git add .
     git commit -m "$commit_msg"
-else
-    echo "✅ 没有需要提交的更改"
 fi
 
 # 检查远程仓库
@@ -50,10 +85,11 @@ if [ $? -eq 0 ]; then
     echo ""
     echo "✅ 代码推送成功！"
     echo ""
-    echo "下一步："
-    echo "1. SSH登录到服务器"
-    echo "2. 执行服务器部署脚本: bash deploy-server.sh"
+    echo "服务器端更新："
+    echo "  ssh 到服务器后执行:"
+    echo "  cd /opt/dirun_oioc && git pull && npm install && pm2 reload dirun-oioc"
 else
     echo ""
     echo "❌ 推送失败，请检查网络连接和仓库权限"
+    exit 1
 fi
