@@ -678,34 +678,17 @@ async function getYouzanOrders(ctx) {
       return;
     }
 
-    // 解析响应数据 - 支持多种可能的数据结构
+    // 解析响应数据 - 有赞API返回结构: result.data.totalResults / result.data.trades
     let trades = [];
     let total = 0;
 
-    if (result.response) {
-      // 4.0.2 版本结构
-      const resp = result.response;
-      total = resp.total_results || 0;
+    // 打印完整响应用于调试（限制长度）
+    console.log('有赞API原始响应:', JSON.stringify(result).substring(0, 500));
 
-      // 尝试多种可能的字段名
-      if (resp.trades && Array.isArray(resp.trades)) {
-        trades = resp.trades;
-      } else if (resp.items && Array.isArray(resp.items)) {
-        trades = resp.items;
-      } else if (resp.list && Array.isArray(resp.list)) {
-        trades = resp.list;
-      } else if (resp.data && Array.isArray(resp.data)) {
-        trades = resp.data;
-      }
-
-      // 如果 trades 为空但 total > 0，打印完整响应用于调试
-      if (trades.length === 0 && total > 0) {
-        console.log('有赞API响应(无trades):', JSON.stringify(result).substring(0, 1000));
-      }
-    } else if (result.data) {
-      // 可能的替代结构
+    if (result.data) {
       const data = result.data;
-      total = data.total_results || data.total || 0;
+      // 有赞Java SDK返回的字段名可能是驼峰命名
+      total = data.totalResults || data.total_results || data.total || 0;
 
       if (data.trades && Array.isArray(data.trades)) {
         trades = data.trades;
@@ -714,12 +697,19 @@ async function getYouzanOrders(ctx) {
       } else if (data.list && Array.isArray(data.list)) {
         trades = data.list;
       }
+    } else if (result.response) {
+      // 备用结构
+      const resp = result.response;
+      total = resp.totalResults || resp.total_results || resp.total || 0;
+
+      if (resp.trades && Array.isArray(resp.trades)) {
+        trades = resp.trades;
+      } else if (resp.items && Array.isArray(resp.items)) {
+        trades = resp.items;
+      }
     } else if (Array.isArray(result.trades)) {
       trades = result.trades;
-      total = result.total_results || trades.length;
-    } else if (Array.isArray(result.items)) {
-      trades = result.items;
-      total = result.total || trades.length;
+      total = result.totalResults || result.total_results || trades.length;
     }
 
     console.log('有赞订单查询结果:', { total, tradesCount: trades.length });
