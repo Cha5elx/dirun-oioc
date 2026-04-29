@@ -684,15 +684,42 @@ async function getYouzanOrders(ctx) {
 
     if (result.response) {
       // 4.0.2 版本结构
-      trades = result.response.trades || [];
-      total = result.response.total_results || 0;
+      const resp = result.response;
+      total = resp.total_results || 0;
+
+      // 尝试多种可能的字段名
+      if (resp.trades && Array.isArray(resp.trades)) {
+        trades = resp.trades;
+      } else if (resp.items && Array.isArray(resp.items)) {
+        trades = resp.items;
+      } else if (resp.list && Array.isArray(resp.list)) {
+        trades = resp.list;
+      } else if (resp.data && Array.isArray(resp.data)) {
+        trades = resp.data;
+      }
+
+      // 如果 trades 为空但 total > 0，打印完整响应用于调试
+      if (trades.length === 0 && total > 0) {
+        console.log('有赞API响应(无trades):', JSON.stringify(result).substring(0, 1000));
+      }
     } else if (result.data) {
       // 可能的替代结构
-      trades = result.data.trades || result.data.items || [];
-      total = result.data.total_results || result.data.total || 0;
+      const data = result.data;
+      total = data.total_results || data.total || 0;
+
+      if (data.trades && Array.isArray(data.trades)) {
+        trades = data.trades;
+      } else if (data.items && Array.isArray(data.items)) {
+        trades = data.items;
+      } else if (data.list && Array.isArray(data.list)) {
+        trades = data.list;
+      }
     } else if (Array.isArray(result.trades)) {
       trades = result.trades;
       total = result.total_results || trades.length;
+    } else if (Array.isArray(result.items)) {
+      trades = result.items;
+      total = result.total || trades.length;
     }
 
     console.log('有赞订单查询结果:', { total, tradesCount: trades.length });
