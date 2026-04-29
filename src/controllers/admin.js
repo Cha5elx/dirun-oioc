@@ -678,38 +678,30 @@ async function getYouzanOrders(ctx) {
       return;
     }
 
-    // 解析响应数据 - 有赞API返回结构: result.data.totalResults / result.data.trades
+    // 解析响应数据 - 有赞API 4.0.2 返回结构: result.data.full_order_info_list
     let trades = [];
     let total = 0;
 
     // 打印完整响应用于调试（限制长度）
-    console.log('有赞API原始响应:', JSON.stringify(result).substring(0, 500));
+    console.log('有赞API原始响应:', JSON.stringify(result).substring(0, 800));
 
     if (result.data) {
       const data = result.data;
-      // 有赞Java SDK返回的字段名可能是驼峰命名
-      total = data.totalResults || data.total_results || data.total || 0;
 
-      if (data.trades && Array.isArray(data.trades)) {
+      // 4.0.2 版本返回 full_order_info_list
+      if (data.full_order_info_list && Array.isArray(data.full_order_info_list)) {
+        // 提取 full_order_info 作为订单数据
+        trades = data.full_order_info_list.map(item => item.full_order_info || item);
+        total = data.total_results || data.totalResults || trades.length;
+      }
+      // 兼容其他可能的结构
+      else if (data.trades && Array.isArray(data.trades)) {
         trades = data.trades;
+        total = data.total_results || data.totalResults || trades.length;
       } else if (data.items && Array.isArray(data.items)) {
         trades = data.items;
-      } else if (data.list && Array.isArray(data.list)) {
-        trades = data.list;
+        total = data.total || trades.length;
       }
-    } else if (result.response) {
-      // 备用结构
-      const resp = result.response;
-      total = resp.totalResults || resp.total_results || resp.total || 0;
-
-      if (resp.trades && Array.isArray(resp.trades)) {
-        trades = resp.trades;
-      } else if (resp.items && Array.isArray(resp.items)) {
-        trades = resp.items;
-      }
-    } else if (Array.isArray(result.trades)) {
-      trades = result.trades;
-      total = result.totalResults || result.total_results || trades.length;
     }
 
     console.log('有赞订单查询结果:', { total, tradesCount: trades.length });
