@@ -27,11 +27,6 @@ class YouzanClient {
    * 获取有赞access_token
    */
   async getToken() {
-    if (this.dryRun) {
-      logger.debug('[DRY RUN] 跳过获取有赞Token');
-      return 'mock_token_for_dry_run';
-    }
-    
     try {
       const resp = await youzanyun.token.get({
         authorize_type: 'silent',
@@ -40,7 +35,7 @@ class YouzanClient {
         grant_id: this.grantId,
         refresh: true,
       });
-      
+
       if (resp.data && resp.data.data && resp.data.data.access_token) {
         this.token = resp.data.data.access_token;
         return this.token;
@@ -54,29 +49,21 @@ class YouzanClient {
   }
 
   /**
-   * 调用有赞API通用方法
+   * 调用有赞API通用方法（仅读操作走此路径；写操作在各方法内做 dry run 检查）
    */
   async callApi(api, version, params) {
-    if (this.dryRun) {
-      logger.debug(`[DRY RUN] 跳过调用有赞API: ${api}`, { params });
-      return {
-        gw_err_resp: { err_code: 0, err_msg: 'dry run mode' },
-        data: { success: true, message: 'DRY RUN - 未真实执行' },
-      };
-    }
-    
     try {
       if (!this.token) {
         await this.getToken();
       }
-      
+
       const resp = await youzanyun.client.call({
         api,
         version,
         token: this.token,
         params,
       });
-      
+
       return resp.data;
     } catch (error) {
       logger.error(`调用有赞API失败 [${api}]`, { error: error.message, params });
@@ -85,9 +72,14 @@ class YouzanClient {
   }
 
   /**
-   * 更新商品库存
+   * 更新商品库存（写操作，受 dryRun 控制）
    */
   async updateStock(itemId, skuId, quantity, type = '0') {
+    if (this.dryRun) {
+      logger.info(`[DRY RUN] 更新库存: itemId=${itemId}, skuId=${skuId}, qty=${quantity}`);
+      return { success: true, message: 'DRY RUN - 库存未真实修改' };
+    }
+
     try {
       const params = {
         quantity: String(quantity),
@@ -95,9 +87,8 @@ class YouzanClient {
         sku_id: skuId ? String(skuId) : '',
         type: type,
       };
-      
+
       const result = await this.callApi('youzan.item.quantity.update', '3.0.0', params);
-      
       return result;
     } catch (error) {
       logger.error('更新库存失败', { error: error.message, itemId, skuId, quantity, type });
@@ -120,9 +111,14 @@ class YouzanClient {
   }
 
   /**
-   * 订单发货
+   * 订单发货（写操作，受 dryRun 控制）
    */
   async shipOrder(orderId, logisticsData) {
+    if (this.dryRun) {
+      logger.info(`[DRY RUN] 订单发货: orderId=${orderId}, logisticsNo=${logisticsData.out_sid}`);
+      return { success: true, message: 'DRY RUN - 未真实发货' };
+    }
+
     try {
       const params = {
         tid: orderId,
@@ -132,9 +128,8 @@ class YouzanClient {
         oids: logisticsData.oids || '',
         outer_tid: logisticsData.outer_tid || '',
       };
-      
+
       const result = await this.callApi('youzan.logistics.online.confirm', '3.0.0', params);
-      
       return result;
     } catch (error) {
       logger.error('订单发货失败', { error: error.message, orderId });
@@ -143,18 +138,22 @@ class YouzanClient {
   }
 
   /**
-   * 更新订单备注
+   * 更新订单备注（写操作，受 dryRun 控制）
    */
   async updateOrderRemark(orderId, remark, flag = '2') {
+    if (this.dryRun) {
+      logger.info(`[DRY RUN] 更新订单备注: orderId=${orderId}`);
+      return { success: true, message: 'DRY RUN - 未真实修改备注' };
+    }
+
     try {
       const params = {
         tid: orderId,
         memo: remark,
         flag: flag,
       };
-      
+
       const result = await this.callApi('youzan.trade.memo.update', '3.0.0', params);
-      
       return result;
     } catch (error) {
       logger.error('更新订单备注失败', { error: error.message, orderId });
@@ -162,17 +161,15 @@ class YouzanClient {
     }
   }
 
+  // ==================== 以下为只读查询，不受 dryRun 影响 ====================
+
   /**
    * 获取订单详情
    */
   async getOrder(orderId) {
     try {
-      const params = {
-        tid: orderId,
-      };
-      
+      const params = { tid: orderId };
       const result = await this.callApi('youzan.trade.get', '4.0.0', params);
-      
       return result;
     } catch (error) {
       logger.error('获取订单详情失败', { error: error.message, orderId });
@@ -192,9 +189,8 @@ class YouzanClient {
         from_app: '',
         request_id: '',
       };
-      
+
       const result = await this.callApi('youzan.logistics.order.query', '1.0.0', params);
-      
       return result;
     } catch (error) {
       logger.error('查询订单包裹详情失败', { error: error.message, orderId });
@@ -207,12 +203,8 @@ class YouzanClient {
    */
   async getProduct(itemId) {
     try {
-      const params = {
-        item_id: String(itemId),
-      };
-      
+      const params = { item_id: String(itemId) };
       const result = await this.callApi('youzan.item.itemdetail.get', '1.0.0', params);
-      
       return result;
     } catch (error) {
       logger.error('获取商品详情失败', { error: error.message, itemId });
@@ -225,12 +217,8 @@ class YouzanClient {
    */
   async getRefund(orderId) {
     try {
-      const params = {
-        tid: orderId,
-      };
-      
+      const params = { tid: orderId };
       const result = await this.callApi('youzan.trade.refund.get', '1.0.0', params);
-      
       return result;
     } catch (error) {
       logger.error('获取退款信息失败', { error: error.message, orderId });
@@ -245,24 +233,13 @@ class YouzanClient {
         page_size: String(pageSize),
       };
 
-      if (status) {
-        params.status = status;
-      }
-      if (startCreated) {
-        params.start_created = startCreated;
-      }
-      if (endCreated) {
-        params.end_created = endCreated;
-      }
-      if (startUpdate) {
-        params.start_update = startUpdate;
-      }
-      if (endUpdate) {
-        params.end_update = endUpdate;
-      }
+      if (status) params.status = status;
+      if (startCreated) params.start_created = startCreated;
+      if (endCreated) params.end_created = endCreated;
+      if (startUpdate) params.start_update = startUpdate;
+      if (endUpdate) params.end_update = endUpdate;
 
       const result = await this.callApi('youzan.trades.sold.get', '4.0.2', params);
-
       return result;
     } catch (error) {
       logger.error('获取订单列表失败', { error: error.message, params: arguments[0] });

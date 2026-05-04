@@ -317,31 +317,109 @@ async function getStats(ctx) {
 
 async function queryCode(ctx) {
   const { code } = ctx.params;
-  
-  const mockResult = {
-    valid: true,
-    code: code,
-    productName: '测试产品',
-    standard: '100ml',
-    productionDate: '2026-03-01',
-    inboundTime: '2026-03-05 10:30:00',
-    warehouse: '华东仓',
-    outboundTime: '2026-03-10 14:20:00',
-    channel: '有赞商城',
-    orderId: 'YZ20260310001',
-    logisticsNo: 'SF1234567890',
-    trace: [
-      { time: '2026-03-01 08:00:00', action: '生产入库', detail: '产品生产完成，入库至华东仓' },
-      { time: '2026-03-05 10:30:00', action: '库存录入', detail: '防伪码绑定，数量: 1' },
-      { time: '2026-03-10 14:20:00', action: '销售出库', detail: '订单 YZ20260310001 发货' },
-      { time: '2026-03-11 09:00:00', action: '物流配送', detail: '顺丰快递 SF1234567890' }
-    ]
-  };
-  
-  ctx.body = {
-    success: true,
-    data: mockResult
-  };
+
+  try {
+    await oiocClient.ensureLogin();
+
+    let productInfo = null;
+    let productId = null;
+    let inboundList = [];
+    let outboundList = [];
+
+    try {
+      const productResult = await oiocClient.getProduct({ productCode: code });
+      if (productResult && productResult.data && productResult.data.length > 0) {
+        productInfo = productResult.data[0];
+        productId = productInfo.productID;
+      }
+    } catch (e) {
+      logger.warn('查询产品信息失败', { code, error: e.message });
+    }
+
+    if (productId) {
+      try {
+        const inboundResult = await oiocClient.getInboundOrderDetail({
+          productID: productId,
+          isStatSum: true,
+          limit: 5
+        });
+        if (inboundResult && inboundResult.data) {
+          inboundList = Array.isArray(inboundResult.data) ? inboundResult.data : [];
+        }
+      } catch (e) {
+        logger.warn('查询入库记录失败', { productId, error: e.message });
+      }
+
+      try {
+        const outboundResult = await oiocClient.getOutboundOrderDetail({
+          productID: productId,
+          isStatSum: true,
+          limit: 5
+        });
+        if (outboundResult && outboundResult.data) {
+          outboundList = Array.isArray(outboundResult.data) ? outboundResult.data : [];
+        }
+      } catch (e) {
+        logger.warn('查询出库记录失败', { productId, error: e.message });
+      }
+    }
+
+    const latestInbound = inboundList[0] || null;
+    const latestOutbound = outboundList[0] || null;
+
+    const trace = [];
+    if (productInfo) {
+      trace.push({
+        time: productInfo.createdAt || '-',
+        action: '产品注册',
+        detail: `产品 "${productInfo.productName || '-'}" 已录入系统`
+      });
+    }
+    inboundList.forEach((order) => {
+      trace.push({
+        time: order.createdAt || order.finishTime || '-',
+        action: '采购入库',
+        detail: `入库单 ${order.orderNumber || '-'}，数量: ${order.detailList?.length || order.expectedQty || '-'}`
+      });
+    });
+    outboundList.forEach((order) => {
+      trace.push({
+        time: order.createdAt || order.finishTime || '-',
+        action: '销售出库',
+        detail: `出库单 ${order.orderNumber || '-'}`
+      });
+    });
+
+    ctx.body = {
+      success: true,
+      data: {
+        valid: !!productInfo,
+        code,
+        productName: productInfo?.productName || null,
+        standard: productInfo?.standard || null,
+        productionDate: productInfo?.createdAt || null,
+        inboundTime: latestInbound?.createdAt || latestInbound?.finishTime || null,
+        warehouse: latestInbound?.receiverID || null,
+        outboundTime: latestOutbound?.createdAt || latestOutbound?.finishTime || null,
+        channel: '有赞商城',
+        orderId: latestOutbound?.orderNumber || null,
+        logisticsNo: null,
+        trace,
+        inboundOrders: inboundList,
+        outboundOrders: outboundList,
+      }
+    };
+  } catch (error) {
+    logError(error, '防伪码查询');
+    ctx.body = {
+      success: true,
+      data: {
+        valid: false,
+        code,
+        message: '查询失败，请稍后重试'
+      }
+    };
+  }
 }
 
 async function getProductMappings(ctx) {
