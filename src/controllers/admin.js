@@ -1313,6 +1313,44 @@ async function getOiocOrderBarcodes(ctx) {
   }
 }
 
+// ==================== 有赞 API 代理 ====================
+
+async function proxyYouzanApi(ctx) {
+  const serverSecret = youzanClient.proxySecret;
+
+  if (!serverSecret) {
+    ctx.status = 404;
+    ctx.body = { success: false, message: '代理服务未启用', code: 'NOT_FOUND' };
+    return;
+  }
+
+  const clientSecret = ctx.request.headers['x-proxy-secret'];
+  if (!clientSecret || clientSecret !== serverSecret) {
+    ctx.status = 403;
+    ctx.body = { success: false, message: '代理密钥无效', code: 'AUTH_ERROR' };
+    return;
+  }
+
+  const { api, version, params } = ctx.request.body;
+  if (!api || !version) {
+    paramError(ctx, 'api 和 version 不能为空');
+    return;
+  }
+
+  try {
+    const result = await youzanClient.callApi(api, version, params || {});
+    ctx.body = result;
+  } catch (error) {
+    logError(error, `有赞API代理 [${api}]`);
+    ctx.status = 500;
+    ctx.body = {
+      success: false,
+      message: error.message || '代理请求失败',
+      code: 'INTERNAL_ERROR',
+    };
+  }
+}
+
 module.exports = {
   login,
   getUsers,
@@ -1344,4 +1382,5 @@ module.exports = {
   createOiocReturnOrder,
   getOiocReturnOrders,
   getOiocOrderBarcodes,
+  proxyYouzanApi,
 };

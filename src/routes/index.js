@@ -60,4 +60,7 @@ router.get('/api/oioc/return-orders', authMiddleware, roleMiddleware('operator')
 // OIOC 订单条码查询
 router.get('/api/oioc/orders/:orderId/barcodes', authMiddleware, roleMiddleware('operator'), adminController.getOiocOrderBarcodes);
 
+// 有赞 API 代理（供本地后端调试用，通过共享密钥鉴权）
+router.post('/api/internal/youzan-proxy', adminController.proxyYouzanApi);
+
 module.exports = router;

@@ -7,6 +7,9 @@ const config = {
     grantId: process.env.YOUZAN_GRANT_ID,
     dryRun: process.env.YOUZAN_DRY_RUN === 'true',
     signSecret: process.env.YOUZAN_SIGN_SECRET,
+    // 本地调试：通过服务器代理调用有赞 API（仅本地后端设置，服务器留空）
+    proxyUrl: process.env.YOUZAN_PROXY_URL || '',
+    proxySecret: process.env.YOUZAN_PROXY_SECRET || '',
   },
   oioc: {
     baseUrl: process.env.OIOC_BASE_URL,

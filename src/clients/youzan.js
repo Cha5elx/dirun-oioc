@@ -5,6 +5,7 @@
 const youzanyun = require('youzanyun-sdk');
 const config = require('../config');
 const logger = require('../utils/logger');
+const axios = require('axios');
 
 class YouzanClient {
   constructor() {
@@ -13,6 +14,8 @@ class YouzanClient {
     this.grantId = config.youzan.grantId;
     this.dryRun = config.youzan.dryRun;
     this.token = null;
+    this.proxyUrl = config.youzan.proxyUrl;
+    this.proxySecret = config.youzan.proxySecret;
   }
 
   isDryRun() {
@@ -24,9 +27,11 @@ class YouzanClient {
   }
 
   /**
-   * 获取有赞access_token
+   * 获取有赞access_token（代理模式下跳过，token由服务端管理）
    */
   async getToken() {
+    if (this.proxyUrl) return;
+
     try {
       const resp = await youzanyun.token.get({
         authorize_type: 'silent',
@@ -52,6 +57,23 @@ class YouzanClient {
    * 调用有赞API通用方法（仅读操作走此路径；写操作在各方法内做 dry run 检查）
    */
   async callApi(api, version, params) {
+    // 代理模式：通过服务器转发
+    if (this.proxyUrl) {
+      try {
+        const resp = await axios.post(this.proxyUrl, { api, version, params }, {
+          headers: {
+            'Content-Type': 'application/json',
+            'x-proxy-secret': this.proxySecret,
+          },
+          timeout: 30000,
+        });
+        return resp.data;
+      } catch (error) {
+        logger.error(`[代理] 调用有赞API失败 [${api}]`, { error: error.message, params });
+        throw error;
+      }
+    }
+
     try {
       if (!this.token) {
         await this.getToken();
