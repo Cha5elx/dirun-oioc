@@ -6,6 +6,8 @@ node_modules/
 .env.local
 .env.*.local
 .env.production
+.env.development
+admin/.env.development
 
 # ===== SQLite 数据库文件（包含敏感数据，禁止提交）=====
 database/*.db
@@ -14,6 +16,8 @@ database/*.db-wal
 database/*.db-shm
 database/*.db.backup.*
 database/backups/
+database/*.backup
+database/*.json
 
 # ===== PM2 配置 =====
 ecosystem.config.js
