@@ -10,24 +10,19 @@
               <el-input v-model="inboundCreate.orderNumber" placeholder="请输入订单号" />
             </el-form-item>
             <el-form-item label="收货代理ID" prop="receiverID">
-              <el-input v-model="inboundCreate.receiverID" placeholder="请输入收货代理ID" />
+              <el-input v-model="inboundCreate.receiverID" placeholder="请输入收货代理ID(仓库ID)" />
             </el-form-item>
-            <el-form-item label="发货代理ID">
-              <el-input v-model="inboundCreate.shipperID" placeholder="可选" />
+            <el-form-item label="发货代理ID" prop="shipperID">
+              <el-input v-model="inboundCreate.shipperID" placeholder="入库传空字符" />
             </el-form-item>
             <el-form-item label="订单描述">
-              <el-input v-model="inboundCreate.orderDesc" placeholder="默认 创建入库单" />
-            </el-form-item>
-            <el-form-item label="入库类型">
-              <el-input-number v-model="inboundCreate.orderInType" :min="0" placeholder="默认 20" />
+              <el-input v-model="inboundCreate.orderDesc" placeholder="可选" />
             </el-form-item>
             <el-divider content-position="left">明细列表</el-divider>
             <div v-for="(item, index) in inboundCreate.detailList" :key="index" style="margin-bottom: 10px; padding: 10px; background: #fafafa; border-radius: 4px">
               <el-row :gutter="10">
-                <el-col :span="6"><el-input v-model="item.productID" placeholder="产品ID" /></el-col>
-                <el-col :span="6"><el-input v-model="item.productCode" placeholder="产品编码" /></el-col>
-                <el-col :span="4"><el-input v-model="item.batchID" placeholder="批次ID" /></el-col>
-                <el-col :span="4"><el-input-number v-model="item.count" :min="1" placeholder="数量" style="width: 100%" /></el-col>
+                <el-col :span="10"><el-input v-model="item.productID" placeholder="产品ID(必填)" /></el-col>
+                <el-col :span="10"><el-input-number v-model="item.expectedQty" :min="1" placeholder="数量" style="width: 100%" /></el-col>
                 <el-col :span="4">
                   <el-button type="danger" link @click="removeInboundDetail(index)">删除</el-button>
                 </el-col>
@@ -35,8 +30,6 @@
             </div>
             <el-form-item>
               <el-button type="success" @click="addInboundDetail">添加明细</el-button>
-            </el-form-item>
-            <el-form-item>
               <el-button type="primary" :loading="inboundCreateLoading" @click="handleCreateInbound">创建入库单</el-button>
               <el-button @click="resetInboundCreate">重置</el-button>
             </el-form-item>
@@ -86,21 +79,19 @@
               <el-input v-model="outboundCreate.orderNumber" placeholder="请输入订单号" />
             </el-form-item>
             <el-form-item label="收货代理ID" prop="receiverID">
-              <el-input v-model="outboundCreate.receiverID" placeholder="请输入收货代理ID" />
+              <el-input v-model="outboundCreate.receiverID" placeholder="请输入收货代理ID(代理ID)" />
             </el-form-item>
-            <el-form-item label="发货代理ID">
-              <el-input v-model="outboundCreate.shipperID" placeholder="可选" />
+            <el-form-item label="发货代理ID" prop="shipperID">
+              <el-input v-model="outboundCreate.shipperID" placeholder="请输入发货代理ID(仓库ID)" />
             </el-form-item>
             <el-form-item label="订单描述">
-              <el-input v-model="outboundCreate.orderDesc" placeholder="默认 创建出库单" />
+              <el-input v-model="outboundCreate.orderDesc" placeholder="可选" />
             </el-form-item>
             <el-divider content-position="left">明细列表</el-divider>
             <div v-for="(item, index) in outboundCreate.detailList" :key="index" style="margin-bottom: 10px; padding: 10px; background: #fafafa; border-radius: 4px">
               <el-row :gutter="10">
-                <el-col :span="6"><el-input v-model="item.productID" placeholder="产品ID" /></el-col>
-                <el-col :span="6"><el-input v-model="item.productCode" placeholder="产品编码" /></el-col>
-                <el-col :span="4"><el-input v-model="item.batchID" placeholder="批次ID" /></el-col>
-                <el-col :span="4"><el-input-number v-model="item.count" :min="1" placeholder="数量" style="width: 100%" /></el-col>
+                <el-col :span="10"><el-input v-model="item.productID" placeholder="产品ID(必填)" /></el-col>
+                <el-col :span="10"><el-input-number v-model="item.expectedQty" :min="1" placeholder="数量" style="width: 100%" /></el-col>
                 <el-col :span="4">
                   <el-button type="danger" link @click="removeOutboundDetail(index)">删除</el-button>
                 </el-col>
@@ -108,8 +99,6 @@
             </div>
             <el-form-item>
               <el-button type="success" @click="addOutboundDetail">添加明细</el-button>
-            </el-form-item>
-            <el-form-item>
               <el-button type="primary" :loading="outboundCreateLoading" @click="handleCreateOutbound">创建出库单</el-button>
               <el-button @click="resetOutboundCreate">重置</el-button>
             </el-form-item>
@@ -159,21 +148,19 @@
               <el-input v-model="returnCreate.orderNumber" placeholder="请输入订单号" />
             </el-form-item>
             <el-form-item label="收货代理ID" prop="receiverID">
-              <el-input v-model="returnCreate.receiverID" placeholder="请输入收货代理ID" />
+              <el-input v-model="returnCreate.receiverID" placeholder="请输入收货代理ID(仓库ID)" />
             </el-form-item>
-            <el-form-item label="发货代理ID">
-              <el-input v-model="returnCreate.shipperID" placeholder="可选" />
+            <el-form-item label="发货代理ID" prop="shipperID">
+              <el-input v-model="returnCreate.shipperID" placeholder="请输入发货代理ID(退货代理ID)" />
             </el-form-item>
             <el-form-item label="订单描述">
-              <el-input v-model="returnCreate.orderDesc" placeholder="默认 创建退货单" />
+              <el-input v-model="returnCreate.orderDesc" placeholder="可选" />
             </el-form-item>
             <el-divider content-position="left">明细列表</el-divider>
             <div v-for="(item, index) in returnCreate.detailList" :key="index" style="margin-bottom: 10px; padding: 10px; background: #fafafa; border-radius: 4px">
               <el-row :gutter="10">
-                <el-col :span="6"><el-input v-model="item.productID" placeholder="产品ID" /></el-col>
-                <el-col :span="6"><el-input v-model="item.productCode" placeholder="产品编码" /></el-col>
-                <el-col :span="4"><el-input v-model="item.batchID" placeholder="批次ID" /></el-col>
-                <el-col :span="4"><el-input-number v-model="item.count" :min="1" placeholder="数量" style="width: 100%" /></el-col>
+                <el-col :span="10"><el-input v-model="item.productID" placeholder="产品ID(必填)" /></el-col>
+                <el-col :span="10"><el-input-number v-model="item.expectedQty" :min="1" placeholder="数量" style="width: 100%" /></el-col>
                 <el-col :span="4">
                   <el-button type="danger" link @click="removeReturnDetail(index)">删除</el-button>
                 </el-col>
@@ -181,8 +168,6 @@
             </div>
             <el-form-item>
               <el-button type="success" @click="addReturnDetail">添加明细</el-button>
-            </el-form-item>
-            <el-form-item>
               <el-button type="primary" :loading="returnCreateLoading" @click="handleCreateReturn">创建退货单</el-button>
               <el-button @click="resetReturnCreate">重置</el-button>
             </el-form-item>
@@ -268,13 +253,15 @@ const activeTab = ref('inbound')
 const inboundCreateFormRef = ref(null)
 const inboundCreateLoading = ref(false)
 
-const emptyInboundDetail = () => ({ productID: '', productCode: '', batchID: '', count: 1 })
+const emptyInboundDetail = () => ({ productID: '', expectedQty: 1 })
 
 const inboundCreate = reactive({
   orderNumber: '',
   receiverID: '',
   shipperID: '',
   orderDesc: '',
+  orderSource: 'API',
+  orderTypeNumber: 10,
   orderInType: 20,
   detailList: [emptyInboundDetail()],
 })
@@ -282,6 +269,7 @@ const inboundCreate = reactive({
 const inboundCreateRules = {
   orderNumber: [{ required: true, message: '请输入订单号', trigger: 'blur' }],
   receiverID: [{ required: true, message: '请输入收货代理ID', trigger: 'blur' }],
+  shipperID: [{ required: true, message: '请输入发货代理ID', trigger: 'blur' }],
 }
 
 function addInboundDetail() { inboundCreate.detailList.push(emptyInboundDetail()) }
@@ -293,6 +281,8 @@ function resetInboundCreate() {
   inboundCreate.receiverID = ''
   inboundCreate.shipperID = ''
   inboundCreate.orderDesc = ''
+  inboundCreate.orderSource = 'API'
+  inboundCreate.orderTypeNumber = 10
   inboundCreate.orderInType = 20
   inboundCreate.detailList = [emptyInboundDetail()]
 }
@@ -350,19 +340,23 @@ function resetInboundQuery() {
 const outboundCreateFormRef = ref(null)
 const outboundCreateLoading = ref(false)
 
-const emptyOutboundDetail = () => ({ productID: '', productCode: '', batchID: '', count: 1 })
+const emptyOutboundDetail = () => ({ productID: '', expectedQty: 1 })
 
 const outboundCreate = reactive({
   orderNumber: '',
   receiverID: '',
   shipperID: '',
   orderDesc: '',
+  orderSource: 'API',
+  orderTypeNumber: 20,
+  orderInType: 0,
   detailList: [emptyOutboundDetail()],
 })
 
 const outboundCreateRules = {
   orderNumber: [{ required: true, message: '请输入订单号', trigger: 'blur' }],
   receiverID: [{ required: true, message: '请输入收货代理ID', trigger: 'blur' }],
+  shipperID: [{ required: true, message: '请输入发货代理ID', trigger: 'blur' }],
 }
 
 function addOutboundDetail() { outboundCreate.detailList.push(emptyOutboundDetail()) }
@@ -374,6 +368,9 @@ function resetOutboundCreate() {
   outboundCreate.receiverID = ''
   outboundCreate.shipperID = ''
   outboundCreate.orderDesc = ''
+  outboundCreate.orderSource = 'API'
+  outboundCreate.orderTypeNumber = 20
+  outboundCreate.orderInType = 0
   outboundCreate.detailList = [emptyOutboundDetail()]
 }
 
@@ -430,19 +427,23 @@ function resetOutboundQuery() {
 const returnCreateFormRef = ref(null)
 const returnCreateLoading = ref(false)
 
-const emptyReturnDetail = () => ({ productID: '', productCode: '', batchID: '', count: 1 })
+const emptyReturnDetail = () => ({ productID: '', expectedQty: 1 })
 
 const returnCreate = reactive({
   orderNumber: '',
   receiverID: '',
   shipperID: '',
   orderDesc: '',
+  orderSource: 'API',
+  orderTypeNumber: 30,
+  orderInType: 0,
   detailList: [emptyReturnDetail()],
 })
 
 const returnCreateRules = {
   orderNumber: [{ required: true, message: '请输入订单号', trigger: 'blur' }],
   receiverID: [{ required: true, message: '请输入收货代理ID', trigger: 'blur' }],
+  shipperID: [{ required: true, message: '请输入发货代理ID', trigger: 'blur' }],
 }
 
 function addReturnDetail() { returnCreate.detailList.push(emptyReturnDetail()) }
@@ -454,6 +455,9 @@ function resetReturnCreate() {
   returnCreate.receiverID = ''
   returnCreate.shipperID = ''
   returnCreate.orderDesc = ''
+  returnCreate.orderSource = 'API'
+  returnCreate.orderTypeNumber = 30
+  returnCreate.orderInType = 0
   returnCreate.detailList = [emptyReturnDetail()]
 }
 
@@ -576,6 +580,9 @@ function setListData(data, listRef, pag) {
     } else if (inner && inner.list) {
       listRef.value = inner.list
       if (pag.total !== undefined) pag.total = inner.total || inner.list.length
+    } else if (inner && inner.data && Array.isArray(inner.data)) {
+      listRef.value = inner.data
+      if (pag.total !== undefined) pag.total = inner.data.length
     }
   } else {
     listRef.value = []

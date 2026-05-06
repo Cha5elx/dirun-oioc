@@ -892,9 +892,54 @@ async function getYouzanOrderDetail(ctx) {
   try {
     const result = await youzanClient.getOrder(orderId);
 
+    if (!result.data || !result.data.full_order_info) {
+      ctx.body = { success: false, message: '订单不存在', code: 'NOT_FOUND' };
+      return;
+    }
+
+    const info = result.data.full_order_info;
+    const orderInfo = info.order_info || {};
+    const addressInfo = info.address_info || {};
+    const payInfo = info.pay_info || {};
+
+    // 创建时间：有赞返回字符串 "2026-04-23 10:30:00"，转为秒级时间戳
+    let created = 0;
+    if (orderInfo.created) {
+      created = Math.floor(new Date(orderInfo.created.replace(/-/g, '/')).getTime() / 1000);
+    } else if (orderInfo.created_time) {
+      created = orderInfo.created_time;
+    }
+
+    // 支付时间
+    let payTime = 0;
+    const rawPayTime = payInfo.pay_time || orderInfo.pay_time;
+    if (rawPayTime) {
+      if (typeof rawPayTime === 'string') {
+        payTime = Math.floor(new Date(rawPayTime.replace(/-/g, '/')).getTime() / 1000);
+      } else {
+        payTime = rawPayTime;
+      }
+    }
+
     ctx.body = {
       success: true,
-      data: result.data || {},
+      data: {
+        tid: orderInfo.tid,
+        status: orderInfo.status,
+        created,
+        pay_time: payTime,
+        total_fee: parseFloat(payInfo.total_fee || 0) * 100,
+        pay_fee: parseFloat(payInfo.payment || payInfo.total_fee || 0) * 100,
+        pay_type: orderInfo.pay_type || payInfo.pay_type || '',
+        buyer_message: orderInfo.remark || orderInfo.buyer_message || '',
+        receiver_name: addressInfo.receiver_name || addressInfo.delivery_name || '',
+        receiver_mobile: addressInfo.receiver_tel || addressInfo.delivery_tel || '',
+        receiver_state: addressInfo.receiver_state || addressInfo.delivery_province || '',
+        receiver_city: addressInfo.receiver_city || addressInfo.delivery_city || '',
+        receiver_district: addressInfo.receiver_district || addressInfo.delivery_district || '',
+        receiver_address: addressInfo.receiver_address || addressInfo.delivery_address || '',
+        orders: info.orders || [],
+      },
     };
   } catch (error) {
     logError(error, '获取有赞订单详情');
@@ -944,8 +989,8 @@ async function getRetryQueueStats(ctx) {
 async function createOiocProduct(ctx) {
   const { productID, productCode, productName, standard } = ctx.request.body;
 
-  if (!productID || !productCode || !productName || !standard) {
-    paramError(ctx, '产品ID、产品编码、产品名称和规格不能为空');
+  if (!productID || !productName) {
+    paramError(ctx, '产品ID和产品名称不能为空');
     return;
   }
 
@@ -980,7 +1025,27 @@ async function getOiocProducts(ctx) {
     if (skip) params.skip = parseInt(skip);
 
     const result = await oiocClient.getProduct(params);
-    ctx.body = { success: true, data: result };
+
+    // 标准化 OIOC 返回结构为 { list, total }
+    let list = [];
+    let total = 0;
+    if (result) {
+      if (Array.isArray(result)) {
+        list = result;
+      } else if (result.data && Array.isArray(result.data)) {
+        list = result.data;
+        total = result.total || result.count || result.totalCount || 0;
+      } else if (result.data && result.data.data && Array.isArray(result.data.data)) {
+        // OIOC 返回 { code, message, data: { data: [...] } } 嵌套结构
+        list = result.data.data;
+        total = result.data.total || result.data.count || result.total || 0;
+      } else if (result.list) {
+        list = result.list;
+        total = result.total || result.count || result.totalCount || 0;
+      }
+    }
+
+    ctx.body = { success: true, data: { list, total: total || list.length } };
   } catch (error) {
     logError(error, '查询OIOC产品');
     ctx.status = 500;
@@ -997,16 +1062,13 @@ async function getOiocProducts(ctx) {
 async function createOiocAgent(ctx) {
   const { userID, account, password, userTypeNumber, parentID } = ctx.request.body;
 
-  if (!userID || !account) {
-    paramError(ctx, '代理ID和账号不能为空');
+  if (!userID || !account || !password || userTypeNumber === undefined || userTypeNumber === null || !parentID) {
+    paramError(ctx, '代理ID、账号、密码、用户类型和父级ID不能为空');
     return;
   }
 
   try {
-    const agentData = { userID, account };
-    if (password) agentData.password = password;
-    if (userTypeNumber !== undefined) agentData.userTypeNumber = userTypeNumber;
-    if (parentID) agentData.parentID = parentID;
+    const agentData = { userID, account, password, userTypeNumber, parentID };
 
     const result = await oiocClient.createAgent(agentData);
     ctx.body = {
@@ -1037,7 +1099,26 @@ async function getOiocAgents(ctx) {
     if (skip) params.skip = parseInt(skip);
 
     const result = await oiocClient.getAgent(params);
-    ctx.body = { success: true, data: result };
+
+    // 标准化 OIOC 返回结构为 { list, total }
+    let list = [];
+    let total = 0;
+    if (result) {
+      if (Array.isArray(result)) {
+        list = result;
+      } else if (result.data && Array.isArray(result.data)) {
+        list = result.data;
+        total = result.total || result.count || result.totalCount || 0;
+      } else if (result.data && result.data.data && Array.isArray(result.data.data)) {
+        list = result.data.data;
+        total = result.data.total || result.data.count || result.total || 0;
+      } else if (result.list) {
+        list = result.list;
+        total = result.total || result.count || result.totalCount || 0;
+      }
+    }
+
+    ctx.body = { success: true, data: { list, total: total || list.length } };
   } catch (error) {
     logError(error, '查询OIOC代理');
     ctx.status = 500;
@@ -1052,18 +1133,17 @@ async function getOiocAgents(ctx) {
 // ==================== OIOC 入库单管理 ====================
 
 async function createOiocInboundOrder(ctx) {
-  const { shipperID, orderNumber, orderDesc, receiverID, detailList, orderInType } = ctx.request.body;
+  const { shipperID, orderNumber, orderDesc, receiverID, detailList, orderInType, orderSource, orderTypeNumber } = ctx.request.body;
 
-  if (!orderNumber || !receiverID || !detailList || !Array.isArray(detailList) || detailList.length === 0) {
-    paramError(ctx, '订单号、收货代理ID和明细列表不能为空');
+  if (!orderNumber || !receiverID || shipperID === undefined || shipperID === null || !detailList || !Array.isArray(detailList) || detailList.length === 0) {
+    paramError(ctx, '订单号、发货代理ID、收货代理ID和明细列表不能为空');
     return;
   }
 
   try {
-    const orderData = { orderNumber, receiverID, detailList };
-    if (shipperID) orderData.shipperID = shipperID;
+    const orderData = { shipperID: shipperID || '', orderNumber, receiverID, detailList, orderSource: orderSource || 'API', orderTypeNumber: orderTypeNumber || 10 };
     if (orderDesc) orderData.orderDesc = orderDesc;
-    if (orderInType !== undefined) orderData.orderInType = orderInType;
+    if (orderInType !== undefined && orderInType !== null) orderData.orderInType = orderInType;
 
     const result = await oiocClient.createInboundOrder(orderData);
     ctx.body = {
@@ -1118,7 +1198,7 @@ async function getOiocInboundOrders(ctx) {
     if (skip) params.skip = parseInt(skip);
 
     const result = await oiocClient.getInboundOrderDetail(params);
-    ctx.body = { success: true, data: result };
+    ctx.body = { success: true, data: normalizeOiocResponse(result) };
   } catch (error) {
     logError(error, '查询OIOC入库单');
     ctx.status = 500;
@@ -1133,16 +1213,15 @@ async function getOiocInboundOrders(ctx) {
 // ==================== OIOC 出库单管理 ====================
 
 async function createOiocOutboundOrder(ctx) {
-  const { shipperID, orderNumber, orderDesc, receiverID, detailList } = ctx.request.body;
+  const { shipperID, orderNumber, orderDesc, receiverID, detailList, orderSource, orderTypeNumber } = ctx.request.body;
 
-  if (!orderNumber || !receiverID || !detailList || !Array.isArray(detailList) || detailList.length === 0) {
-    paramError(ctx, '订单号、收货代理ID和明细列表不能为空');
+  if (!orderNumber || !receiverID || shipperID === undefined || shipperID === null || !detailList || !Array.isArray(detailList) || detailList.length === 0) {
+    paramError(ctx, '订单号、发货代理ID、收货代理ID和明细列表不能为空');
     return;
   }
 
   try {
-    const orderData = { orderNumber, receiverID, detailList };
-    if (shipperID) orderData.shipperID = shipperID;
+    const orderData = { shipperID, orderNumber, receiverID, detailList, orderSource: orderSource || 'API', orderTypeNumber: orderTypeNumber || 20, orderInType: 0 };
     if (orderDesc) orderData.orderDesc = orderDesc;
 
     const result = await oiocClient.createOutboundOrder(orderData);
@@ -1198,7 +1277,7 @@ async function getOiocOutboundOrders(ctx) {
     if (skip) params.skip = parseInt(skip);
 
     const result = await oiocClient.getOutboundOrderDetail(params);
-    ctx.body = { success: true, data: result };
+    ctx.body = { success: true, data: normalizeOiocResponse(result) };
   } catch (error) {
     logError(error, '查询OIOC出库单');
     ctx.status = 500;
@@ -1213,16 +1292,15 @@ async function getOiocOutboundOrders(ctx) {
 // ==================== OIOC 退货单管理 ====================
 
 async function createOiocReturnOrder(ctx) {
-  const { shipperID, orderNumber, orderDesc, receiverID, detailList } = ctx.request.body;
+  const { shipperID, orderNumber, orderDesc, receiverID, detailList, orderSource, orderTypeNumber } = ctx.request.body;
 
-  if (!orderNumber || !receiverID || !detailList || !Array.isArray(detailList) || detailList.length === 0) {
-    paramError(ctx, '订单号、收货代理ID和明细列表不能为空');
+  if (!orderNumber || !receiverID || shipperID === undefined || shipperID === null || !detailList || !Array.isArray(detailList) || detailList.length === 0) {
+    paramError(ctx, '订单号、发货代理ID、收货代理ID和明细列表不能为空');
     return;
   }
 
   try {
-    const orderData = { orderNumber, receiverID, detailList };
-    if (shipperID) orderData.shipperID = shipperID;
+    const orderData = { shipperID, orderNumber, receiverID, detailList, orderSource: orderSource || 'API', orderTypeNumber: orderTypeNumber || 30, orderInType: 0 };
     if (orderDesc) orderData.orderDesc = orderDesc;
 
     const result = await oiocClient.createReturnOrder(orderData);
@@ -1277,7 +1355,7 @@ async function getOiocReturnOrders(ctx) {
     if (skip) params.skip = parseInt(skip);
 
     const result = await oiocClient.getReturnOrderDetail(params);
-    ctx.body = { success: true, data: result };
+    ctx.body = { success: true, data: normalizeOiocResponse(result) };
   } catch (error) {
     logError(error, '查询OIOC退货单');
     ctx.status = 500;
@@ -1301,7 +1379,7 @@ async function getOiocOrderBarcodes(ctx) {
 
   try {
     const result = await oiocClient.getOrderCodes(orderId);
-    ctx.body = { success: true, data: result };
+    ctx.body = { success: true, data: normalizeOiocResponse(result) };
   } catch (error) {
     logError(error, '查询OIOC订单条码');
     ctx.status = 500;
@@ -1349,6 +1427,28 @@ async function proxyYouzanApi(ctx) {
       code: 'INTERNAL_ERROR',
     };
   }
+}
+
+// ==================== 工具函数 ====================
+
+function normalizeOiocResponse(result) {
+  let list = [];
+  let total = 0;
+  if (result) {
+    if (Array.isArray(result)) {
+      list = result;
+    } else if (result.data && Array.isArray(result.data)) {
+      list = result.data;
+      total = result.total || result.count || result.totalCount || 0;
+    } else if (result.data && result.data.data && Array.isArray(result.data.data)) {
+      list = result.data.data;
+      total = result.data.total || result.data.count || result.total || 0;
+    } else if (result.list) {
+      list = result.list;
+      total = result.total || result.count || result.totalCount || 0;
+    }
+  }
+  return { list, total: total || list.length };
 }
 
 module.exports = {

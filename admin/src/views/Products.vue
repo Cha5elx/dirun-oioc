@@ -61,7 +61,7 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { reactive, ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import api from '@/api'
 
@@ -76,9 +76,7 @@ const createForm = reactive({
 
 const createRules = {
   productID: [{ required: true, message: '请输入产品ID', trigger: 'blur' }],
-  productCode: [{ required: true, message: '请输入产品编码', trigger: 'blur' }],
   productName: [{ required: true, message: '请输入产品名称', trigger: 'blur' }],
-  standard: [{ required: true, message: '请输入产品规格', trigger: 'blur' }],
 }
 
 function resetCreateForm() {
@@ -139,6 +137,9 @@ async function fetchProducts() {
       } else if (inner && inner.list) {
         productList.value = inner.list
         pagination.total = inner.total || inner.list.length
+      } else if (inner && inner.data && Array.isArray(inner.data)) {
+        productList.value = inner.data
+        pagination.total = inner.data.length
       }
     } else {
       productList.value = []
@@ -158,6 +159,8 @@ function resetQuery() {
   pagination.page = 1
   fetchProducts()
 }
+
+onMounted(() => fetchProducts())
 </script>
 
 <style scoped>

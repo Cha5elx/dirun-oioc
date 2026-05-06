@@ -28,7 +28,7 @@
         
         <el-menu-item index="/query">
           <el-icon><Search /></el-icon>
-          <span>防伪码查询</span>
+          <span>一物一码订单查询</span>
         </el-menu-item>
 
         <el-menu-item index="/products">
@@ -43,7 +43,7 @@
 
         <el-menu-item index="/oioc-orders">
           <el-icon><Tickets /></el-icon>
-          <span>OIOC单据</span>
+          <span>一物一码单据</span>
         </el-menu-item>
 
         <el-menu-item index="/users">

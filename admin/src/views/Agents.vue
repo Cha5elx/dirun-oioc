@@ -13,14 +13,14 @@
         <el-form-item label="账号" prop="account">
           <el-input v-model="createForm.account" placeholder="请输入账号" />
         </el-form-item>
-        <el-form-item label="密码">
-          <el-input v-model="createForm.password" placeholder="默认 888333" />
+        <el-form-item label="密码" prop="password">
+          <el-input v-model="createForm.password" placeholder="请输入密码" />
         </el-form-item>
-        <el-form-item label="用户类型">
-          <el-input-number v-model="createForm.userTypeNumber" :min="1" placeholder="默认 30" />
+        <el-form-item label="用户类型" prop="userTypeNumber">
+          <el-input-number v-model="createForm.userTypeNumber" :min="1" />
         </el-form-item>
-        <el-form-item label="父级ID">
-          <el-input v-model="createForm.parentID" placeholder="默认 admin" />
+        <el-form-item label="父级ID" prop="parentID">
+          <el-input v-model="createForm.parentID" placeholder="请输入父级ID" />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" :loading="createLoading" @click="handleCreate">创建代理</el-button>
@@ -64,7 +64,7 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { reactive, ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import api from '@/api'
 
@@ -81,6 +81,9 @@ const createForm = reactive({
 const createRules = {
   userID: [{ required: true, message: '请输入代理ID', trigger: 'blur' }],
   account: [{ required: true, message: '请输入账号', trigger: 'blur' }],
+  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
+  userTypeNumber: [{ required: true, message: '请选择用户类型', trigger: 'blur' }],
+  parentID: [{ required: true, message: '请输入父级ID', trigger: 'blur' }],
 }
 
 function resetCreateForm() {
@@ -144,6 +147,9 @@ async function fetchAgents() {
       } else if (inner && inner.list) {
         agentList.value = inner.list
         pagination.total = inner.total || inner.list.length
+      } else if (inner && inner.data && Array.isArray(inner.data)) {
+        agentList.value = inner.data
+        pagination.total = inner.data.length
       }
     } else {
       agentList.value = []
@@ -163,6 +169,8 @@ function resetQuery() {
   pagination.page = 1
   fetchAgents()
 }
+
+onMounted(() => fetchAgents())
 </script>
 
 <style scoped>

@@ -35,7 +35,7 @@ const routes = [
         path: 'query',
         name: 'Query',
         component: () => import('@/views/Query.vue'),
-        meta: { title: '防伪码查询', icon: 'Search' }
+        meta: { title: '一物一码订单查询', icon: 'Search' }
       },
       {
         path: 'products',
@@ -53,7 +53,7 @@ const routes = [
         path: 'oioc-orders',
         name: 'OiocOrders',
         component: () => import('@/views/OiocOrders.vue'),
-        meta: { title: 'OIOC单据', icon: 'Tickets' }
+        meta: { title: '一物一码单据', icon: 'Tickets' }
       },
       {
         path: 'users',
