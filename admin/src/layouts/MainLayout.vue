@@ -30,7 +30,22 @@
           <el-icon><Search /></el-icon>
           <span>防伪码查询</span>
         </el-menu-item>
-        
+
+        <el-menu-item index="/products">
+          <el-icon><Goods /></el-icon>
+          <span>产品管理</span>
+        </el-menu-item>
+
+        <el-menu-item index="/agents">
+          <el-icon><Avatar /></el-icon>
+          <span>代理管理</span>
+        </el-menu-item>
+
+        <el-menu-item index="/oioc-orders">
+          <el-icon><Tickets /></el-icon>
+          <span>OIOC单据</span>
+        </el-menu-item>
+
         <el-menu-item index="/users">
           <el-icon><User /></el-icon>
           <span>用户管理</span>

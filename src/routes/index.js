@@ -37,4 +37,27 @@ router.get('/api/youzan/orders/:orderId', authMiddleware, roleMiddleware('operat
 
 router.get('/api/retry-queue/stats', authMiddleware, roleMiddleware('admin'), adminController.getRetryQueueStats);
 
+// OIOC 产品管理
+router.post('/api/oioc/products', authMiddleware, roleMiddleware('operator'), adminController.createOiocProduct);
+router.get('/api/oioc/products', authMiddleware, roleMiddleware('operator'), adminController.getOiocProducts);
+
+// OIOC 代理管理
+router.post('/api/oioc/agents', authMiddleware, roleMiddleware('operator'), adminController.createOiocAgent);
+router.get('/api/oioc/agents', authMiddleware, roleMiddleware('operator'), adminController.getOiocAgents);
+
+// OIOC 入库单管理
+router.post('/api/oioc/inbound-orders', authMiddleware, roleMiddleware('operator'), adminController.createOiocInboundOrder);
+router.get('/api/oioc/inbound-orders', authMiddleware, roleMiddleware('operator'), adminController.getOiocInboundOrders);
+
+// OIOC 出库单管理
+router.post('/api/oioc/outbound-orders', authMiddleware, roleMiddleware('operator'), adminController.createOiocOutboundOrder);
+router.get('/api/oioc/outbound-orders', authMiddleware, roleMiddleware('operator'), adminController.getOiocOutboundOrders);
+
+// OIOC 退货单管理
+router.post('/api/oioc/return-orders', authMiddleware, roleMiddleware('operator'), adminController.createOiocReturnOrder);
+router.get('/api/oioc/return-orders', authMiddleware, roleMiddleware('operator'), adminController.getOiocReturnOrders);
+
+// OIOC 订单条码查询
+router.get('/api/oioc/orders/:orderId/barcodes', authMiddleware, roleMiddleware('operator'), adminController.getOiocOrderBarcodes);
+
 module.exports = router;

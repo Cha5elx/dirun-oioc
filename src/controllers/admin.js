@@ -939,6 +939,380 @@ async function getRetryQueueStats(ctx) {
   }
 }
 
+// ==================== OIOC 产品管理 ====================
+
+async function createOiocProduct(ctx) {
+  const { productID, productCode, productName, standard } = ctx.request.body;
+
+  if (!productID || !productCode || !productName || !standard) {
+    paramError(ctx, '产品ID、产品编码、产品名称和规格不能为空');
+    return;
+  }
+
+  try {
+    const result = await oiocClient.createProduct({ productID, productCode, productName, standard });
+    ctx.body = {
+      success: true,
+      message: '创建产品成功',
+      data: result,
+    };
+  } catch (error) {
+    logError(error, '创建OIOC产品');
+    ctx.status = 500;
+    if (isProduction()) {
+      ctx.body = { success: false, message: '创建产品失败', code: 'INTERNAL_ERROR' };
+    } else {
+      ctx.body = { success: false, message: error.message || '创建产品失败', code: 'INTERNAL_ERROR', detail: error.stack };
+    }
+  }
+}
+
+async function getOiocProducts(ctx) {
+  const { productID, productCode, productName, standard, limit, skip } = ctx.query;
+
+  try {
+    const params = {};
+    if (productID) params.productID = productID;
+    if (productCode) params.productCode = productCode;
+    if (productName) params.productName = productName;
+    if (standard) params.standard = standard;
+    if (limit) params.limit = parseInt(limit);
+    if (skip) params.skip = parseInt(skip);
+
+    const result = await oiocClient.getProduct(params);
+    ctx.body = { success: true, data: result };
+  } catch (error) {
+    logError(error, '查询OIOC产品');
+    ctx.status = 500;
+    if (isProduction()) {
+      ctx.body = { success: false, message: '查询产品失败', code: 'INTERNAL_ERROR' };
+    } else {
+      ctx.body = { success: false, message: error.message || '查询产品失败', code: 'INTERNAL_ERROR', detail: error.stack };
+    }
+  }
+}
+
+// ==================== OIOC 代理管理 ====================
+
+async function createOiocAgent(ctx) {
+  const { userID, account, password, userTypeNumber, parentID } = ctx.request.body;
+
+  if (!userID || !account) {
+    paramError(ctx, '代理ID和账号不能为空');
+    return;
+  }
+
+  try {
+    const agentData = { userID, account };
+    if (password) agentData.password = password;
+    if (userTypeNumber !== undefined) agentData.userTypeNumber = userTypeNumber;
+    if (parentID) agentData.parentID = parentID;
+
+    const result = await oiocClient.createAgent(agentData);
+    ctx.body = {
+      success: true,
+      message: '创建代理成功',
+      data: result,
+    };
+  } catch (error) {
+    logError(error, '创建OIOC代理');
+    ctx.status = 500;
+    if (isProduction()) {
+      ctx.body = { success: false, message: '创建代理失败', code: 'INTERNAL_ERROR' };
+    } else {
+      ctx.body = { success: false, message: error.message || '创建代理失败', code: 'INTERNAL_ERROR', detail: error.stack };
+    }
+  }
+}
+
+async function getOiocAgents(ctx) {
+  const { userID, account, userName, limit, skip } = ctx.query;
+
+  try {
+    const params = {};
+    if (userID) params.userID = userID;
+    if (account) params.account = account;
+    if (userName) params.userName = userName;
+    if (limit) params.limit = parseInt(limit);
+    if (skip) params.skip = parseInt(skip);
+
+    const result = await oiocClient.getAgent(params);
+    ctx.body = { success: true, data: result };
+  } catch (error) {
+    logError(error, '查询OIOC代理');
+    ctx.status = 500;
+    if (isProduction()) {
+      ctx.body = { success: false, message: '查询代理失败', code: 'INTERNAL_ERROR' };
+    } else {
+      ctx.body = { success: false, message: error.message || '查询代理失败', code: 'INTERNAL_ERROR', detail: error.stack };
+    }
+  }
+}
+
+// ==================== OIOC 入库单管理 ====================
+
+async function createOiocInboundOrder(ctx) {
+  const { shipperID, orderNumber, orderDesc, receiverID, detailList, orderInType } = ctx.request.body;
+
+  if (!orderNumber || !receiverID || !detailList || !Array.isArray(detailList) || detailList.length === 0) {
+    paramError(ctx, '订单号、收货代理ID和明细列表不能为空');
+    return;
+  }
+
+  try {
+    const orderData = { orderNumber, receiverID, detailList };
+    if (shipperID) orderData.shipperID = shipperID;
+    if (orderDesc) orderData.orderDesc = orderDesc;
+    if (orderInType !== undefined) orderData.orderInType = orderInType;
+
+    const result = await oiocClient.createInboundOrder(orderData);
+    ctx.body = {
+      success: true,
+      message: '创建入库单成功',
+      data: result,
+    };
+  } catch (error) {
+    logError(error, '创建OIOC入库单');
+    ctx.status = 500;
+    if (isProduction()) {
+      ctx.body = { success: false, message: '创建入库单失败', code: 'INTERNAL_ERROR' };
+    } else {
+      ctx.body = { success: false, message: error.message || '创建入库单失败', code: 'INTERNAL_ERROR', detail: error.stack };
+    }
+  }
+}
+
+async function getOiocInboundOrders(ctx) {
+  const {
+    orderNumber, orderStateNumber, receiverID, receiverUsername,
+    productID, productName, batchID, batchName,
+    createdStartTime, createdEndTime, finishStartTime, finishEndTime,
+    isAccurate, isScan, isStatSum, orderInType, orderInTypeList,
+    orderDetailDesc, showMiddleCodeCount, returnSerialTag,
+    limit, skip,
+  } = ctx.query;
+
+  try {
+    const params = {};
+    if (orderNumber) params.orderNumber = orderNumber;
+    if (orderStateNumber) params.orderStateNumber = parseInt(orderStateNumber);
+    if (receiverID) params.receiverID = receiverID;
+    if (receiverUsername) params.receiverUsername = receiverUsername;
+    if (productID) params.productID = productID;
+    if (productName) params.productName = productName;
+    if (batchID) params.batchID = batchID;
+    if (batchName) params.batchName = batchName;
+    if (createdStartTime) params.createdStartTime = createdStartTime;
+    if (createdEndTime) params.createdEndTime = createdEndTime;
+    if (finishStartTime) params.finishStartTime = finishStartTime;
+    if (finishEndTime) params.finishEndTime = finishEndTime;
+    if (isAccurate !== undefined) params.isAccurate = isAccurate;
+    if (isScan !== undefined) params.isScan = isScan;
+    if (isStatSum !== undefined) params.isStatSum = isStatSum;
+    if (orderInType !== undefined) params.orderInType = parseInt(orderInType);
+    if (orderInTypeList) params.orderInTypeList = orderInTypeList;
+    if (orderDetailDesc) params.orderDetailDesc = orderDetailDesc;
+    if (showMiddleCodeCount !== undefined) params.showMiddleCodeCount = showMiddleCodeCount;
+    if (returnSerialTag !== undefined) params.returnSerialTag = returnSerialTag;
+    if (limit) params.limit = parseInt(limit);
+    if (skip) params.skip = parseInt(skip);
+
+    const result = await oiocClient.getInboundOrderDetail(params);
+    ctx.body = { success: true, data: result };
+  } catch (error) {
+    logError(error, '查询OIOC入库单');
+    ctx.status = 500;
+    if (isProduction()) {
+      ctx.body = { success: false, message: '查询入库单失败', code: 'INTERNAL_ERROR' };
+    } else {
+      ctx.body = { success: false, message: error.message || '查询入库单失败', code: 'INTERNAL_ERROR', detail: error.stack };
+    }
+  }
+}
+
+// ==================== OIOC 出库单管理 ====================
+
+async function createOiocOutboundOrder(ctx) {
+  const { shipperID, orderNumber, orderDesc, receiverID, detailList } = ctx.request.body;
+
+  if (!orderNumber || !receiverID || !detailList || !Array.isArray(detailList) || detailList.length === 0) {
+    paramError(ctx, '订单号、收货代理ID和明细列表不能为空');
+    return;
+  }
+
+  try {
+    const orderData = { orderNumber, receiverID, detailList };
+    if (shipperID) orderData.shipperID = shipperID;
+    if (orderDesc) orderData.orderDesc = orderDesc;
+
+    const result = await oiocClient.createOutboundOrder(orderData);
+    ctx.body = {
+      success: true,
+      message: '创建出库单成功',
+      data: result,
+    };
+  } catch (error) {
+    logError(error, '创建OIOC出库单');
+    ctx.status = 500;
+    if (isProduction()) {
+      ctx.body = { success: false, message: '创建出库单失败', code: 'INTERNAL_ERROR' };
+    } else {
+      ctx.body = { success: false, message: error.message || '创建出库单失败', code: 'INTERNAL_ERROR', detail: error.stack };
+    }
+  }
+}
+
+async function getOiocOutboundOrders(ctx) {
+  const {
+    userID, orderNumber, orderStateNumber, receiverID, receiverUsername,
+    productID, productName, batchID, batchName,
+    createdStartTime, createdEndTime, finishStartTime, finishEndTime,
+    shipperID, shipperName, orderTypeNumber, orderTypeNumberList,
+    isAccurate, isScan, isStatSum,
+    limit, skip,
+  } = ctx.query;
+
+  try {
+    const params = {};
+    if (userID) params.userID = userID;
+    if (orderNumber) params.orderNumber = orderNumber;
+    if (orderStateNumber) params.orderStateNumber = parseInt(orderStateNumber);
+    if (receiverID) params.receiverID = receiverID;
+    if (receiverUsername) params.receiverUsername = receiverUsername;
+    if (productID) params.productID = productID;
+    if (productName) params.productName = productName;
+    if (batchID) params.batchID = batchID;
+    if (batchName) params.batchName = batchName;
+    if (createdStartTime) params.createdStartTime = createdStartTime;
+    if (createdEndTime) params.createdEndTime = createdEndTime;
+    if (finishStartTime) params.finishStartTime = finishStartTime;
+    if (finishEndTime) params.finishEndTime = finishEndTime;
+    if (shipperID) params.shipperID = shipperID;
+    if (shipperName) params.shipperName = shipperName;
+    if (orderTypeNumber) params.orderTypeNumber = parseInt(orderTypeNumber);
+    if (orderTypeNumberList) params.orderTypeNumberList = orderTypeNumberList;
+    if (isAccurate !== undefined) params.isAccurate = isAccurate;
+    if (isScan !== undefined) params.isScan = isScan;
+    if (isStatSum !== undefined) params.isStatSum = isStatSum;
+    if (limit) params.limit = parseInt(limit);
+    if (skip) params.skip = parseInt(skip);
+
+    const result = await oiocClient.getOutboundOrderDetail(params);
+    ctx.body = { success: true, data: result };
+  } catch (error) {
+    logError(error, '查询OIOC出库单');
+    ctx.status = 500;
+    if (isProduction()) {
+      ctx.body = { success: false, message: '查询出库单失败', code: 'INTERNAL_ERROR' };
+    } else {
+      ctx.body = { success: false, message: error.message || '查询出库单失败', code: 'INTERNAL_ERROR', detail: error.stack };
+    }
+  }
+}
+
+// ==================== OIOC 退货单管理 ====================
+
+async function createOiocReturnOrder(ctx) {
+  const { shipperID, orderNumber, orderDesc, receiverID, detailList } = ctx.request.body;
+
+  if (!orderNumber || !receiverID || !detailList || !Array.isArray(detailList) || detailList.length === 0) {
+    paramError(ctx, '订单号、收货代理ID和明细列表不能为空');
+    return;
+  }
+
+  try {
+    const orderData = { orderNumber, receiverID, detailList };
+    if (shipperID) orderData.shipperID = shipperID;
+    if (orderDesc) orderData.orderDesc = orderDesc;
+
+    const result = await oiocClient.createReturnOrder(orderData);
+    ctx.body = {
+      success: true,
+      message: '创建退货单成功',
+      data: result,
+    };
+  } catch (error) {
+    logError(error, '创建OIOC退货单');
+    ctx.status = 500;
+    if (isProduction()) {
+      ctx.body = { success: false, message: '创建退货单失败', code: 'INTERNAL_ERROR' };
+    } else {
+      ctx.body = { success: false, message: error.message || '创建退货单失败', code: 'INTERNAL_ERROR', detail: error.stack };
+    }
+  }
+}
+
+async function getOiocReturnOrders(ctx) {
+  const {
+    userID, orderNumber, orderStateNumber, receiverID, receiverUsername,
+    productID, productName, batchID, batchName,
+    createdStartTime, createdEndTime, finishStartTime, finishEndTime,
+    shipperID, shipperName, isAccurate, isStatSum,
+    createdUserID, createdUserName,
+    limit, skip,
+  } = ctx.query;
+
+  try {
+    const params = {};
+    if (userID) params.userID = userID;
+    if (orderNumber) params.orderNumber = orderNumber;
+    if (orderStateNumber) params.orderStateNumber = parseInt(orderStateNumber);
+    if (receiverID) params.receiverID = receiverID;
+    if (receiverUsername) params.receiverUsername = receiverUsername;
+    if (productID) params.productID = productID;
+    if (productName) params.productName = productName;
+    if (batchID) params.batchID = batchID;
+    if (batchName) params.batchName = batchName;
+    if (createdStartTime) params.createdStartTime = createdStartTime;
+    if (createdEndTime) params.createdEndTime = createdEndTime;
+    if (finishStartTime) params.finishStartTime = finishStartTime;
+    if (finishEndTime) params.finishEndTime = finishEndTime;
+    if (shipperID) params.shipperID = shipperID;
+    if (shipperName) params.shipperName = shipperName;
+    if (isAccurate !== undefined) params.isAccurate = isAccurate;
+    if (isStatSum !== undefined) params.isStatSum = isStatSum;
+    if (createdUserID) params.createdUserID = createdUserID;
+    if (createdUserName) params.createdUserName = createdUserName;
+    if (limit) params.limit = parseInt(limit);
+    if (skip) params.skip = parseInt(skip);
+
+    const result = await oiocClient.getReturnOrderDetail(params);
+    ctx.body = { success: true, data: result };
+  } catch (error) {
+    logError(error, '查询OIOC退货单');
+    ctx.status = 500;
+    if (isProduction()) {
+      ctx.body = { success: false, message: '查询退货单失败', code: 'INTERNAL_ERROR' };
+    } else {
+      ctx.body = { success: false, message: error.message || '查询退货单失败', code: 'INTERNAL_ERROR', detail: error.stack };
+    }
+  }
+}
+
+// ==================== OIOC 条码查询 ====================
+
+async function getOiocOrderBarcodes(ctx) {
+  const { orderId } = ctx.params;
+
+  if (!orderId) {
+    paramError(ctx, '订单ID不能为空');
+    return;
+  }
+
+  try {
+    const result = await oiocClient.getOrderCodes(orderId);
+    ctx.body = { success: true, data: result };
+  } catch (error) {
+    logError(error, '查询OIOC订单条码');
+    ctx.status = 500;
+    if (isProduction()) {
+      ctx.body = { success: false, message: '查询订单条码失败', code: 'INTERNAL_ERROR' };
+    } else {
+      ctx.body = { success: false, message: error.message || '查询订单条码失败', code: 'INTERNAL_ERROR', detail: error.stack };
+    }
+  }
+}
+
 module.exports = {
   login,
   getUsers,
@@ -958,5 +1332,16 @@ module.exports = {
   triggerCleanup,
   getYouzanOrders,
   getYouzanOrderDetail,
-  getRetryQueueStats
+  getRetryQueueStats,
+  createOiocProduct,
+  getOiocProducts,
+  createOiocAgent,
+  getOiocAgents,
+  createOiocInboundOrder,
+  getOiocInboundOrders,
+  createOiocOutboundOrder,
+  getOiocOutboundOrders,
+  createOiocReturnOrder,
+  getOiocReturnOrders,
+  getOiocOrderBarcodes,
 };

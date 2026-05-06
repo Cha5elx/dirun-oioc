@@ -38,6 +38,24 @@ const routes = [
         meta: { title: '防伪码查询', icon: 'Search' }
       },
       {
+        path: 'products',
+        name: 'Products',
+        component: () => import('@/views/Products.vue'),
+        meta: { title: '产品管理', icon: 'Goods' }
+      },
+      {
+        path: 'agents',
+        name: 'Agents',
+        component: () => import('@/views/Agents.vue'),
+        meta: { title: '代理管理', icon: 'Avatar' }
+      },
+      {
+        path: 'oioc-orders',
+        name: 'OiocOrders',
+        component: () => import('@/views/OiocOrders.vue'),
+        meta: { title: 'OIOC单据', icon: 'Tickets' }
+      },
+      {
         path: 'users',
         name: 'Users',
         component: () => import('@/views/Users.vue'),
