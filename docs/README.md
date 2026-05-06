@@ -1,138 +1,195 @@
-# 有赞与第三方一物一码系统对接服务
+# DiRun OIOC — 有赞 × 一物一码 对接服务
+
+连接**有赞商城**与**第三方一物一码系统**的中间件服务，实现入库、发货、退货的自动双向同步。
+
+```
+有赞商城 ←── Webhook/API ──→ 本服务 ←── Webhook/API ──→ 第三方一物一码系统
+```
+
+---
 
 ## 项目结构
 
 ```
 dirun_oioc/
+├── index.js                     # 服务入口 (Koa 3.x)
 ├── src/
-│   ├── config/           # 配置管理
-│   │   └── index.js
-│   ├── clients/          # API客户端
-│   │   ├── oioc.js      # 第三方一物一码API
-│   │   └── youzan.js    # 有赞API
-│   ├── services/         # 业务逻辑层
-│   │   └── sync.js      # 同步服务
-│   ├── controllers/      # 控制器
-│   │   └── webhook.js   # Webhook处理
-│   ├── routes/           # 路由
-│   │   └── index.js
-│   └── cloud-function.js # 云函数入口
-├── index.js              # 本地服务入口
-├── test-sync.js          # 测试脚本
-├── .env.example          # 环境变量示例
+│   ├── clients/
+│   │   ├── oioc.js              # 一物一码 API 客户端
+│   │   └── youzan.js            # 有赞 API 客户端
+│   ├── controllers/
+│   │   ├── admin.js             # 管理后台 API（产品/代理/单据/用户/日志）
+│   │   └── webhook.js           # Webhook 处理（入库/出库/退货）
+│   ├── services/
+│   │   ├── sync.js              # 核心同步业务逻辑
+│   │   ├── cleanup.js           # 日志定时清理 + 数据库自动备份
+│   │   └── retryQueue.js        # 失败重试队列（指数退避）
+│   ├── models/                  # 数据模型 (User, SyncLog, ProductMapping)
+│   ├── middleware/
+│   │   ├── auth.js              # JWT 认证 + RBAC 权限
+│   │   └── verifySignature.js   # Webhook HMAC-SHA256 签名验证
+│   ├── config/index.js          # 环境变量配置
+│   ├── routes/index.js          # 路由定义
+│   └── utils/
+│       ├── logger.js            # Winston 日志
+│       └── response.js          # 响应工具
+├── admin/                       # Vue 3 管理后台 (Element Plus)
+├── scripts/
+│   ├── deploy-server.sh         # 服务器一键部署脚本
+│   ├── update-server.sh         # 服务器更新脚本
+│   └── import-products.js       # 有赞商品批量导入工具
+├── tests/                       # 测试脚本
+├── docs/                        # 文档
+│   ├── 产品文档.md               # 完整产品文档
+│   └── README.md                # 本文件
+├── database/                    # SQLite 数据库文件
+├── logs/                        # 日志输出
+├── public/                      # 前端构建产物（已提交 Git）
+├── ecosystem.config.js          # PM2 配置
 └── package.json
 ```
+
+---
 
 ## 快速开始
 
 ### 1. 安装依赖
 
 ```bash
+# 后端
 npm install
+
+# 前端
+cd admin && npm install
 ```
 
 ### 2. 配置环境变量
-
-复制 `.env.example` 为 `.env` 并填写配置：
 
 ```bash
 cp .env.example .env
 ```
 
-编辑 `.env` 文件，填写以下配置：
-- 有赞配置：client_id, client_secret, grant_id
-- 第三方一物一码配置：base_url, username, password
+编辑 `.env`，必填项：
 
-### 3. 填写API实现
+| 变量 | 说明 |
+|------|------|
+| `YOUZAN_CLIENT_ID` | 有赞应用 Client ID |
+| `YOUZAN_CLIENT_SECRET` | 有赞应用 Client Secret |
+| `YOUZAN_GRANT_ID` | 有赞授权 Grant ID |
+| `OIOC_BASE_URL` | 一物一码系统 API 地址 |
+| `OIOC_USERNAME` | 一物一码系统登录账号 |
+| `OIOC_PASSWORD` | 一物一码系统登录密码 |
+| `JWT_SECRET` | JWT 签名密钥（至少 32 位随机字符串） |
 
-#### 第三方一物一码API (`src/clients/oioc.js`)
-需要实现的方法：
-- `login()` - 登录获取token
-- `createProduct()` - 创建产品
-- `getProduct()` - 查询产品
-- `createAgent()` - 创建代理商
-- `getAgent()` - 查询代理商
-- `createInboundOrder()` - 创建入库单
-- `createOutboundOrder()` - 创建出库单
-- `createReturnOrder()` - 创建退货单
-- `getOrderCodes()` - 查询订单条码
-- `getInboundOrderDetail()` - 查询入库订单详情
-- `getOutboundOrderDetail()` - 查询出库订单详情
-- `getReturnOrderDetail()` - 查询退货订单详情
-
-#### 有赞API (`src/clients/youzan.js`)
-需要实现的方法：
-- `getToken()` - 获取access_token
-- `callApi()` - 调用API通用方法
-- `updateStock()` - 更新库存
-- `getOrder()` - 获取订单详情
-- `shipOrder()` - 订单发货
-- `updateOrderRemark()` - 更新订单备注
-- `getProduct()` - 获取商品详情
-- `handleRefund()` - 处理退款
-
-### 4. 运行测试
+### 3. 启动开发环境
 
 ```bash
-npm test
+# 终端 1 — 后端（nodemon 热重载）
+npm run dev                     # → http://localhost:3000
+
+# 终端 2 — 前端（Vite 热更新）
+cd admin && npm run dev         # → http://localhost:5173
 ```
 
-### 5. 启动服务
+> 开发时访问 `http://localhost:5173`，Vite 自动代理 API 请求到后端 `:3000`。
+
+### 4. 生产构建
 
 ```bash
-npm start
+cd admin && npm run build       # 输出到 ../public/
 ```
 
-服务启动后，可以访问：
-- 健康检查：http://localhost:3000/health
-- 有赞Webhook：http://localhost:3000/webhook/youzan
-- OIOC Webhook：http://localhost:3000/webhook/oioc
+---
+
+## 管理后台
+
+默认管理员账号：`cangku001` / `123456`（通过一物一码系统登录验证）
+
+| 页面 | 功能 |
+|------|------|
+| 数据仪表盘 | 今日订单/入库/出库/退货统计 |
+| 同步日志 | 同步操作记录，支持按类型/状态/时间筛选 |
+| 有赞订单 | 有赞订单列表和详情 |
+| 一物一码订单查询 | 按订单 ID 查询条码 |
+| 产品管理 | 创建/查询 OIOC 产品，支持从有赞批量导入 |
+| 代理管理 | 创建/查询 OIOC 代理 |
+| 一物一码单据 | 创建/查询入库单、出库单、退货单 |
+| 用户管理 | 用户 CRUD + 角色分配（admin/operator/viewer） |
+| 产品映射 | 有赞 SKU ↔ OIOC 产品编码映射关系 |
+
+---
 
 ## 业务流程
 
-### 流程1：商品采购入库
-1. 第三方系统推送入库数据到 `/webhook/oioc`
-2. 同步服务自动给有赞加库存
+### 入库
+```
+OIOC Webhook ─→ 本服务 ─→ 创建入库单 ─→ 有赞加库存 ─→ 记录日志
+```
 
-### 流程2：销售发货
-1. 有赞推送订单到 `/webhook/youzan`
-2. 同步服务在第三方系统创建出库单
-3. 仓库扫码发货后，第三方推送发货数据到 `/webhook/oioc`
-4. 同步服务自动操作有赞（扣库存、发货、写防伪码）
+### 发货
+```
+有赞 Webhook (订单付款) ─→ 本服务 ─→ 创建出库单
+OIOC Webhook (出库)     ─→ 本服务 ─→ 有赞扣库存 + 发货 + 写防伪码
+```
 
-### 流程3：退货退款
-1. 有赞推送退货申请到 `/webhook/youzan`
-2. 同步服务在第三方创建退货单
-3. 仓库扫码退货后，第三方推送退货数据到 `/webhook/oioc`
-4. 同步服务自动给有赞加回库存
+### 退货
+```
+有赞 Webhook (退货申请) ─→ 本服务 ─→ 创建退货单
+OIOC Webhook (退货完成) ─→ 本服务 ─→ 有赞恢复库存
+```
 
-## 部署到云函数
+失败自动进入重试队列，指数退避重试（30s → 60s → 120s），最多 3 次。
 
-### 阿里云函数计算
+---
 
-1. 修改 `template.yaml` 配置
-2. 使用 `fun deploy` 部署
-3. 入口函数：`src/cloud-function.js`
+## 部署
 
-### 腾讯云云函数
+完整部署指南见 [产品文档.md](./产品文档.md) 第六章，这里列出关键步骤：
 
-1. 在云函数控制台创建函数
-2. 上传代码包
-3. 入口函数：`src/cloud-function.js`
+```bash
+# 服务器一键部署
+sudo bash scripts/deploy-server.sh
 
-## 开发建议
+# 后续更新
+bash scripts/update-server.sh
+```
 
-1. **先实现API客户端**：先完成 `oioc.js` 和 `youzan.js` 中的API实现
-2. **本地测试**：使用 `test-sync.js` 测试业务流程
-3. **Webhook测试**：使用 ngrok 或类似工具暴露本地端口，测试Webhook回调
-4. **日志记录**：建议添加日志库（如 winston）记录详细日志
-5. **错误处理**：完善错误处理和重试机制
-6. **数据持久化**：建议添加数据库存储同步记录
+### Nginx 子域名配置示例
 
-## 注意事项
+```
+server {
+    listen 80;
+    server_name oioc.lanzhijingyou.com;
 
-1. **安全性**：不要将 `.env` 文件提交到版本控制
-2. **Token管理**：建议实现token自动刷新机制
-3. **幂等性**：Webhook处理要保证幂等性，避免重复处理
-4. **超时处理**：API调用要设置合理的超时时间
-5. **监控告警**：建议添加监控和告警机制
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120s;
+        proxy_send_timeout 120s;
+    }
+}
+```
+
+### 有赞商品导入
+
+```bash
+node scripts/import-products.js
+```
+
+---
+
+## 文档索引
+
+| 文档 | 内容 |
+|------|------|
+| [产品文档.md](./产品文档.md) | 完整产品手册（架构、API、运维、环境变量） |
+| `DEPLOYMENT.md` | 详细部署指南 |
+| `TESTING.md` | 本地测试指南 |
+
+---
+
+*最后更新: 2026-05-06*
