@@ -147,7 +147,8 @@
       <div class="order-items-title">商品明细</div>
       <el-table :data="currentOrder.orders || []" stripe size="small">
         <el-table-column prop="title" label="商品名称" min-width="200" />
-        <el-table-column prop="sku_unique_code" label="SKU编码" width="120" />
+        <el-table-column prop="productCode" label="产品编码" width="140" />
+        <el-table-column prop="antiFakeCode" label="防伪码" width="140" />
         <el-table-column prop="num" label="数量" width="80" />
         <el-table-column prop="price" label="单价" width="100">
           <template #default="{ row }">

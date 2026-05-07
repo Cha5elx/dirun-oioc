@@ -3,6 +3,7 @@ const { generateToken, isAdmin, hasRole, ROLE_HIERARCHY } = require('../middlewa
 const oiocClient = require('../clients/oioc');
 const youzanClient = require('../clients/youzan');
 const { isProduction, logError, paramError, authError, notFoundError } = require('../utils/response');
+const logger = require('../utils/logger');
 const { runCleanup, getCleanupStats, formatBytes } = require('../services/cleanup');
 
 async function login(ctx) {
@@ -921,6 +922,13 @@ async function getYouzanOrderDetail(ctx) {
       }
     }
 
+    // 补充商品编码（有赞 item_code）和预留防伪码字段
+    const orders = (info.orders || []).map(item => ({
+      ...item,
+      productCode: item.item_no || '',
+      antiFakeCode: '', // 预留：OIOC 防伪码，待后续对接
+    }));
+
     ctx.body = {
       success: true,
       data: {
@@ -938,7 +946,7 @@ async function getYouzanOrderDetail(ctx) {
         receiver_city: addressInfo.receiver_city || addressInfo.delivery_city || '',
         receiver_district: addressInfo.receiver_district || addressInfo.delivery_district || '',
         receiver_address: addressInfo.receiver_address || addressInfo.delivery_address || '',
-        orders: info.orders || [],
+        orders,
       },
     };
   } catch (error) {
