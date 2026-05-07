@@ -50,14 +50,12 @@ class OiocClient {
         
         axiosConfig.metadata = { startTime: Date.now() };
         
-        if (!this.isProduction) {
-          logger.debug('API请求', {
-            method: axiosConfig.method?.toUpperCase(),
-            url: `${axiosConfig.baseURL}${axiosConfig.url}`,
-            params: axiosConfig.params,
-            data: axiosConfig.data
-          });
-        }
+        logger.info('API请求', {
+          method: axiosConfig.method?.toUpperCase(),
+          url: `${axiosConfig.baseURL}${axiosConfig.url}`,
+          params: axiosConfig.params,
+          data: axiosConfig.data
+        });
         
         return axiosConfig;
       },
@@ -70,13 +68,12 @@ class OiocClient {
       (response) => {
         const duration = Date.now() - response.config.metadata.startTime;
         
-        if (!this.isProduction) {
-          logger.debug('API响应', {
-            status: response.status,
-            url: response.config.url,
-            duration: `${duration}ms`
-          });
-        } else if (duration > 1000) {
+        logger.info('API响应', {
+          status: response.status,
+          url: response.config.url,
+          duration: `${duration}ms`
+        });
+        if (duration > 1000) {
           logger.warn('慢请求警告', {
             url: response.config.url,
             duration: `${duration}ms`
@@ -88,14 +85,12 @@ class OiocClient {
       (error) => {
         const duration = Date.now() - error.config?.metadata?.startTime;
         
-        if (!this.isProduction) {
-          logger.debug('API响应错误', {
-            url: error.config?.url,
-            status: error.response?.status,
-            message: error.message,
-            duration: `${duration}ms`
-          });
-        }
+        logger.error('API响应错误', {
+          url: error.config?.url,
+          status: error.response?.status,
+          message: error.message,
+          duration: `${duration}ms`
+        });
         return Promise.reject(error);
       }
     );

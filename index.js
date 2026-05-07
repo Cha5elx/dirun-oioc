@@ -13,8 +13,7 @@ const logger = require('./src/utils/logger');
 const { startCleanupTask, getCleanupStats } = require('./src/services/cleanup');
 
 process.on('uncaughtException', (err) => {
-  if (err.code === 'EPIPE' || err.code === 'ECONNRESET') {
-    logger.warn('客户端连接提前关闭，忽略错误', { code: err.code });
+  if (err.code === 'EPIPE' || err.code === 'ECONNRESET' || err.code === 'ERR_STREAM_PREMATURE_CLOSE') {
     return;
   }
   logger.error('未捕获的异常', { error: err.message, stack: err.stack });
