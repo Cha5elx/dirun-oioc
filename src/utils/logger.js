@@ -57,7 +57,7 @@ if (isProduction) {
     }),
     new winston.transports.File({
       filename: path.join(logsDir, 'combined.log'),
-      level: 'info',
+      level: 'debug',
       format: fileFormat,
       maxsize: 5242880,
       maxFiles: 10
